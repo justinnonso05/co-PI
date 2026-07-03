@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// We are managing Enums at the application level (in TypeScript) instead of DB-level native enums.
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  university   String?
+  faculty      String?
+  department   String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  projects     ProjectMember[]
+  applications ProjectApplication[]
+  tasks        Task[] @relation("TaskAssignee")
+  tasksAssigned Task[] @relation("TaskAssigner")
+
+  initiatedActivities Activity[] @relation("ActivityInitiator")
+  targetedActivities  Activity[] @relation("ActivityTarget")
+}
+
+model Project {
+  id                     String        @id @default(uuid())
+  title                  String
+  researchTopic          String?
+  description            String
+  visibility             String        @default("PUBLIC")
+  university             String?
+  status                 String        @default("DRAFT")
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  members      ProjectMember[]
+  applications ProjectApplication[]
+  proposal     Proposal?
+  tasks        Task[]
+  documents    Document[]
+  surveys      Survey[]
+  outputs      ResearchOutput[]
+  activities   Activity[]
+}
+
+model ProjectMember {
+  projectId String
+  userId    String
+  role      String
+  joinedAt  DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, userId])
+}
+
+model ProjectApplication {
+  id        String   @id @default(uuid())
+  projectId String
+  userId    String
+  role      String
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Proposal {
+  id        String   @id @default(uuid())
+  projectId String   @unique
+  type      String   // COLLABORATIVE, UPLOADED
+  content   Json?
+  fileUrl   String?
+  status    String   @default("DRAFT")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id             String   @id @default(uuid())
+  projectId      String
+  assignedUserId String?
+  assignedByUserId String?
+  title          String
+  dueDate        DateTime
+  isCompleted    Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee User?   @relation("TaskAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  assigner User?   @relation("TaskAssigner", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+}
+
+model Document {
+  id             String   @id @default(uuid())
+  projectId      String
+  title          String
+  content        Json?
+  lastModifiedBy String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Survey {
+  id         String   @id @default(uuid())
+  projectId  String
+  title      String
+  schemaJson Json
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  project   Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  responses SurveyResponse[]
+}
+
+model ResearchOutput {
+  id         String     @id @default(uuid())
+  projectId  String
+  outputType String
+  citation   String
+  fileUrl    String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model SurveyResponse {
+  id         String   @id @default(uuid())
+  surveyId   String
+  answers    Json
+  submittedBy String?
+  createdAt  DateTime @default(now())
+
+  survey Survey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+}
+
+model Activity {
+  id           String   @id @default(uuid())
+  projectId    String
+  activityType String
+  message      String
+  initiatorId  String?
+  targetId     String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  initiator User?   @relation("ActivityInitiator", fields: [initiatorId], references: [id], onDelete: SetNull)
+  target    User?   @relation("ActivityTarget", fields: [targetId], references: [id], onDelete: SetNull)
+}

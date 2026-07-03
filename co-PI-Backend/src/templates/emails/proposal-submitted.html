@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body { font-family: Arial, sans-serif; background-color: #f5f3ee; color: #1A1A18; margin: 0; padding: 0; }
+  .wrapper { max-width: 600px; margin: 32px auto; padding: 0 16px; }
+  .card { background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+  .header { background-color: #1A1A18; padding: 24px 32px; }
+  .header-brand { font-size: 18px; font-weight: bold; color: #F2EDE4; letter-spacing: 0.05em; margin: 0; }
+  .header-brand span { color: #2A7C75; }
+  .badge { display: inline-block; background: #7c3aed; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 10px; border-radius: 4px; margin-top: 8px; }
+  .body { padding: 32px; }
+  .body p { font-size: 15px; line-height: 1.7; margin: 0 0 14px; color: #1A1A18; }
+  .highlight { color: #2A7C75; font-weight: 600; }
+  .info-box { background: rgba(124,58,237,0.07); border-left: 3px solid #7c3aed; border-radius: 0 4px 4px 0; padding: 14px 18px; margin: 20px 0; }
+  .info-box p { margin: 4px 0; font-size: 14px; }
+  .footer { padding: 20px 32px; text-align: center; font-size: 12px; color: rgba(26,26,24,0.4); background: #f5f3ee; border-top: 1px solid rgba(26,26,24,0.08); }
+</style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="header">
+        <p class="header-brand">CRMP <span>·</span> Research Platform</p>
+        <span class="badge">Proposal Review Required</span>
+      </div>
+      <div class="body">
+        <p>Hello <strong>{{reviewerName}}</strong>,</p>
+        <p>A research proposal has been submitted for your review on project <span class="highlight">"{{projectName}}"</span>.</p>
+        <div class="info-box">
+          <p><strong>Project:</strong> {{projectName}}</p>
+          <p><strong>Submitted by:</strong> {{submitterName}}</p>
+        </div>
+        <p>Please log in to CRMP to review the proposal and either approve it or request a revision from the team.</p>
+        <p style="font-size: 13px; color: rgba(26,26,24,0.55);">Your timely review helps keep the project on track.</p>
+      </div>
+    </div>
+    <div class="footer">
+      <p>&copy; 2026 Collaborative Research Management Platform. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>
