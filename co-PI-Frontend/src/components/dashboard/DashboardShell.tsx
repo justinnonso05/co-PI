@@ -25,12 +25,26 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   const [sideOpen, setSideOpen]   = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  /* ── Auth guard ── */
+  /* ── Auth guard & Global Presence ── */
   useEffect(() => {
     const token = getToken();
     if (!token) { router.replace('/login'); return; }
     const u = getUser<User>();
     setUser(u);
+
+    // Global Presence Ping
+    if (u) {
+      import('@/lib/socket').then(({ getSocket }) => {
+        const socket = getSocket();
+        socket.connect();
+        
+        // Ping immediately and then every 10s
+        const ping = () => socket.emit('set-online-status', { userId: u.id, status: 'online' });
+        ping();
+        const interval = setInterval(ping, 10000);
+        return () => clearInterval(interval);
+      });
+    }
   }, [router]);
 
   function handleSignOut() {
@@ -61,6 +75,22 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
               <span className="ds-nav-label">{label}</span>
             </Link>
           ))}
+          
+          {/* Context-aware Repository Links */}
+          {pathname.startsWith('/repositories/') && (
+            <>
+              <div style={{ margin: '1.5rem 0 0.5rem 1rem', fontSize: '0.75rem', fontWeight: 600, color: 'rgba(26,26,24,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Current Repository
+              </div>
+              <Link
+                href={`/repositories/${pathname.split('/')[2]}/chat`}
+                className={`ds-nav-item ${pathname.endsWith('/chat') ? 'ds-nav-item--active' : ''}`}
+              >
+                <span className="ds-nav-icon">💬</span>
+                <span className="ds-nav-label">Team Chat</span>
+              </Link>
+            </>
+          )}
         </nav>
 
         <button className="ds-signout" onClick={handleSignOut}>

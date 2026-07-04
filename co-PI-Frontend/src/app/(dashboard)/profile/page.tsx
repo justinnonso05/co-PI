@@ -4,19 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch, getUser, removeToken, setUser } from '@/lib/api';
 import { USERS } from '@/lib/endpoints';
-import { SearchableDropdown } from '@/components/SearchableDropdown';
-
-import institutionsData from '@/data/institutions.json';
-import facultiesData from '@/data/faculties.json';
+import Link from 'next/link';
 
 interface User {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
-  university?: string;
-  faculty?: string;
-  department?: string;
 }
 
 export default function ProfilePage() {
@@ -24,13 +18,21 @@ export default function ProfilePage() {
   const [user, setLocalUser]        = useState<User | null>(null);
   const [firstName, setFirstName]   = useState('');
   const [lastName, setLastName]     = useState('');
-  const [university, setUniversity] = useState('');
-  const [faculty, setFaculty]       = useState('');
-  const [department, setDepartment] = useState('');
   const [saving, setSaving]         = useState(false);
   const [message, setMessage]       = useState('');
   const [error, setError]           = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [publicProfile, setPublicProfile] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [copied, setCopied] = useState(false);
+
+  function handleCopyLink() {
+    navigator.clipboard.writeText(`${window.location.origin}/profiles/${user?.email.split('@')[0]}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   useEffect(() => {
     const u = getUser<User>();
@@ -38,9 +40,14 @@ export default function ProfilePage() {
     setLocalUser(u);
     setFirstName(u.firstName ?? '');
     setLastName(u.lastName ?? '');
-    setUniversity(u.university ?? '');
-    setFaculty(u.faculty ?? '');
-    setDepartment(u.department ?? '');
+
+    // Fetch public profile to get repo stats
+    const username = u.email.split('@')[0];
+    apiFetch<any>(USERS.PUBLIC_PROFILE(username))
+      .then(res => {
+        setPublicProfile(res);
+      })
+      .catch(console.error);
   }, [router]);
 
   async function handleUpdateProfile(e: React.FormEvent) {
@@ -53,11 +60,12 @@ export default function ProfilePage() {
     try {
       const res = await apiFetch<{ user: User }>(USERS.PROFILE, {
         method: 'PUT',
-        body: JSON.stringify({ firstName, lastName, university, faculty, department }),
+        body: JSON.stringify({ firstName, lastName }),
       });
       setUser(res.user);
       setLocalUser(res.user);
       setMessage('Profile updated successfully.');
+      setIsEditing(false);
     } catch (err: any) {
       setError(err.message || 'Failed to update profile.');
     } finally {
@@ -76,22 +84,63 @@ export default function ProfilePage() {
     }
   }
 
-  const departmentOptions =
-    faculty
-      ? facultiesData.faculties.find(f => f.name === faculty)?.departments.map(d => ({ id: d.id, name: d.name })) ?? []
-      : [];
-
   if (!user) return null;
 
   return (
     <div style={{ padding: '0.75rem 1.5rem 2rem', display: 'flex', justifyContent: 'center' }}>
-      <div className="auth-card auth-card--wide" style={{ maxWidth: '560px', width: '100%' }}>
+      <div className="auth-card auth-card--wide" style={{ maxWidth: '600px', width: '100%' }}>
 
         {/* Header */}
-        <div className="auth-header">
-          <p className="auth-eyebrow">Account</p>
-          <h1 className="auth-title">Your Profile</h1>
-          <p className="auth-subtitle">Update your personal information and institution details.</p>
+        <div className="auth-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <p className="auth-eyebrow">Account</p>
+            <h1 className="auth-title" style={{ marginBottom: '0.5rem' }}>Your Profile</h1>
+            <button 
+              onClick={handleCopyLink}
+              className="dash-btn-ghost"
+              style={{ padding: '0.25rem 0.75rem', fontSize: '0.85rem', border: '1px solid rgba(0,0,0,0.1)' }}
+            >
+              {copied ? 'Copied!' : 'Copy Public Link'}
+            </button>
+          </div>
+          {activeTab === 'overview' && !isEditing && (
+            <button onClick={() => setIsEditing(true)} className="dash-btn-ghost" style={{ border: '1px solid #ccc' }}>
+              Edit Profile
+            </button>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: '2rem', borderBottom: '1px solid rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
+          <button 
+            onClick={() => setActiveTab('overview')} 
+            style={{ padding: '0.5rem 0', background: 'none', border: 'none', borderBottom: activeTab === 'overview' ? '2px solid #2A7C75' : '2px solid transparent', color: activeTab === 'overview' ? '#111' : 'var(--text-muted)', fontWeight: activeTab === 'overview' ? 600 : 400, cursor: 'pointer' }}>
+            Overview
+          </button>
+          <button 
+            onClick={() => setActiveTab('repositories')} 
+            style={{ padding: '0.5rem 0', background: 'none', border: 'none', borderBottom: activeTab === 'repositories' ? '2px solid #2A7C75' : '2px solid transparent', color: activeTab === 'repositories' ? '#111' : 'var(--text-muted)', fontWeight: activeTab === 'repositories' ? 600 : 400, cursor: 'pointer' }}>
+            Repositories
+          </button>
+          <button 
+            onClick={() => setActiveTab('settings')} 
+            style={{ padding: '0.5rem 0', background: 'none', border: 'none', borderBottom: activeTab === 'settings' ? '2px solid #2A7C75' : '2px solid transparent', color: activeTab === 'settings' ? '#111' : 'var(--text-muted)', fontWeight: activeTab === 'settings' ? 600 : 400, cursor: 'pointer' }}>
+            Settings
+          </button>
+        </div>
+
+        {activeTab === 'overview' && (
+          <>
+            <div style={{ marginBottom: '2rem', display: 'flex', gap: '2rem', borderBottom: '1px solid rgba(0,0,0,0.1)', paddingBottom: '1.5rem' }}>
+          <div>
+            <div style={{ fontSize: '2rem', fontWeight: 600, color: '#111' }}>{publicProfile?.projects?.length || 0}</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Owned Repositories</div>
+          </div>
+          <div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111', marginTop: '0.5rem' }}>
+              {publicProfile?.createdAt ? new Date(publicProfile.createdAt).toLocaleDateString() : '...'}
+            </div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Member Since</div>
+          </div>
         </div>
 
         {/* Form */}
@@ -121,7 +170,8 @@ export default function ProfilePage() {
                 placeholder="Ada"
                 value={firstName}
                 onChange={e => { setFirstName(e.target.value); setError(''); }}
-                disabled={saving}
+                disabled={!isEditing || saving}
+                style={{ opacity: !isEditing ? 0.7 : 1 }}
               />
             </div>
             <div className="auth-field">
@@ -133,56 +183,68 @@ export default function ProfilePage() {
                 placeholder="Lovelace"
                 value={lastName}
                 onChange={e => { setLastName(e.target.value); setError(''); }}
-                disabled={saving}
+                disabled={!isEditing || saving}
+                style={{ opacity: !isEditing ? 0.7 : 1 }}
               />
             </div>
-          </div>
-
-          {/* University */}
-          <SearchableDropdown
-            label="University / Institution"
-            options={institutionsData as { id: string | number; name: string }[]}
-            value={university}
-            onChange={val => { setUniversity(val); setFaculty(''); setDepartment(''); }}
-            placeholder="Select institution"
-            disabled={saving}
-          />
-
-          {/* Faculty + Department */}
-          <div className="auth-row">
-            <SearchableDropdown
-              label="Faculty"
-              options={facultiesData.faculties.map(f => ({ id: f.id, name: f.name }))}
-              value={faculty}
-              onChange={val => { setFaculty(val); setDepartment(''); }}
-              placeholder="Select faculty"
-              disabled={saving || !university}
-            />
-            <SearchableDropdown
-              label="Department"
-              options={departmentOptions}
-              value={department}
-              onChange={setDepartment}
-              placeholder="Select department"
-              disabled={saving || !faculty}
-            />
           </div>
 
           {error   && <p className="auth-error">{error}</p>}
           {message && <p className="auth-success">{message}</p>}
 
-          <button
-            type="submit"
-            className="auth-btn"
-            disabled={saving}
-            id="profile-submit"
-          >
-            {saving ? 'Saving…' : 'Save changes →'}
-          </button>
+          {isEditing && (
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button
+                type="button"
+                className="dash-btn-ghost"
+                onClick={() => {
+                  setIsEditing(false);
+                  setFirstName(user.firstName);
+                  setLastName(user.lastName);
+                }}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="auth-btn"
+                disabled={saving}
+                id="profile-submit"
+              >
+                {saving ? 'Saving…' : 'Save changes →'}
+              </button>
+            </div>
+          )}
         </form>
+          </>
+        )}
+
+        {/* List of Owned Repositories */}
+        {activeTab === 'repositories' && (
+          <div style={{ marginTop: '1rem' }}>
+            <h3 style={{ fontSize: '1rem', color: '#111', marginBottom: '1rem' }}>Repositories Owned</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {publicProfile.projects.map((p: any) => (
+                <div key={p.projectId} style={{ padding: '1rem', background: '#f9f9f8', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.05)' }}>
+                  <Link href={`/repositories/${p.projectId}`} style={{ fontSize: '1.05rem', fontWeight: 600, color: '#2A7C75', textDecoration: 'none' }}>
+                    {p.project.title}
+                  </Link>
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    {p.project.description?.substring(0, 100) || 'No description'}...
+                  </p>
+                </div>
+              ))}
+            </div>
+            {(!publicProfile?.projects || publicProfile.projects.length === 0) && (
+              <p style={{ color: 'var(--text-muted)' }}>You don't have any owned repositories yet.</p>
+            )}
+          </div>
+        )}
 
         {/* Danger zone */}
-        <div className="auth-form" style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(26,26,24,0.1)' }}>
+        {activeTab === 'settings' && (
+          <div className="auth-form" style={{ marginTop: '1rem' }}>
           <p className="auth-eyebrow" style={{ color: 'rgba(185,28,28,0.8)', marginBottom: '0.5rem' }}>Danger zone</p>
           <p className="auth-subtitle" style={{ marginBottom: '1rem' }}>
             Deactivating your account will immediately log you out. Your data will be preserved to protect ongoing projects.
@@ -196,6 +258,7 @@ export default function ProfilePage() {
             Deactivate Account
           </button>
         </div>
+        )}
       </div>
 
       {/* Confirm deactivation modal */}

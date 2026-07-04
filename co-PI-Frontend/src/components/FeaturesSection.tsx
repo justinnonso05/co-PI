@@ -3,18 +3,18 @@
 import { useEffect, useRef } from 'react';
 
 const NODES = [
-  { name: 'Dr. Ada Okafor',      field: 'Computational Biology · Lagos',  x: 120, y: 240 },
-  { name: 'Prof. S. Lohmann',    field: 'Quantum Systems · Munich',        x: 280, y: 100 },
-  { name: 'James Mensah',        field: 'Systems Engineering · Landmark',  x: 450, y: 280 },
-  { name: 'Dr. Yuki Tanaka',     field: 'Marine Biology · Kyoto',          x: 620, y: 150 },
-  { name: 'Dr. Priya Mehta',     field: 'Biomedical AI · Delhi',           x: 780, y: 320 },
-  { name: 'Prof. Ines Ferreira', field: 'Ecology · Lisbon',                x: 200, y: 390 },
-  { name: 'Dr. Ravi Singh',      field: 'Climate Science · Mumbai',        x: 380, y: 420 },
-  { name: 'K. Yamamoto',         field: 'Neuroscience · Osaka',            x: 560, y: 380 },
-  { name: 'Dr. L. Boateng',      field: 'Public Health · Accra',           x: 700, y: 420 },
-  { name: 'Prof. Z. Ali',        field: 'Mathematics · Cairo',             x: 840, y: 200 },
-  { name: 'Dr. B. Costa',        field: 'AI Ethics · São Paulo',           x: 70,  y: 120 },
-  { name: 'S. Nakamura',         field: 'Materials Science · Tokyo',       x: 480, y: 60  },
+  { name: 'Ada Okafor',      field: 'Data Engineering · Lagos',  x: 120, y: 240 },
+  { name: 'S. Lohmann',      field: 'Backend Systems · Munich',        x: 280, y: 100 },
+  { name: 'James Mensah',    field: 'Systems Architecture · Landmark',  x: 450, y: 280 },
+  { name: 'Yuki Tanaka',     field: 'Machine Learning · Kyoto',          x: 620, y: 150 },
+  { name: 'Priya Mehta',     field: 'AI Agent Design · Delhi',           x: 780, y: 320 },
+  { name: 'Ines Ferreira',   field: 'Cloud Infrastructure · Lisbon',                x: 200, y: 390 },
+  { name: 'Ravi Singh',      field: 'Open Source · Mumbai',        x: 380, y: 420 },
+  { name: 'K. Yamamoto',     field: 'DevOps · Osaka',            x: 560, y: 380 },
+  { name: 'L. Boateng',      field: 'Product Design · Accra',           x: 700, y: 420 },
+  { name: 'Z. Ali',          field: 'Cryptography · Cairo',             x: 840, y: 200 },
+  { name: 'B. Costa',        field: 'Web3 · São Paulo',           x: 70,  y: 120 },
+  { name: 'S. Nakamura',     field: 'Frontend Engineering · Tokyo',       x: 480, y: 60  },
 ];
 
 const EDGES = [

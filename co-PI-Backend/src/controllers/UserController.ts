@@ -89,4 +89,45 @@ export class UserController {
       res.status(500).json({ error: 'Internal server error' });
     }
   }
+
+  /**
+   * Get public profile by username (email prefix)
+   */
+  static async getPublicProfile(req: Request, res: Response) {
+    try {
+      const username = req.params.username;
+      
+      const user = await prisma.user.findFirst({
+        where: {
+          email: {
+            startsWith: `${username}@`,
+            mode: 'insensitive'
+          }
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          createdAt: true,
+          projects: {
+            where: {
+              role: 'PI'
+            },
+            include: {
+              project: true
+            }
+          }
+        }
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      res.status(200).json(user);
+    } catch (error) {
+      console.error('Error fetching public profile:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
 }

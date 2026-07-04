@@ -25,6 +25,7 @@ const router = Router();
  *         description: Unauthorized
  */
 router.get('/users', authenticateJWT, UserController.searchUsers);
+router.get('/users/profile/:username', UserController.getPublicProfile);
 router.put('/users/profile', authenticateJWT, UserController.updateProfile);
 router.delete('/users/profile', authenticateJWT, UserController.deactivateAccount);
 

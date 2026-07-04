@@ -594,7 +594,7 @@ export default function ProjectPage() {
 
   async function toggleTask(task: Task) {
     try {
-      const d = await apiFetch<{ task: Task }>(TASKS.STATUS(task.id), {
+      const d = await apiFetch<{ task: Task }>(TASKS.UPDATE(task.id), {
         method: 'PUT',
         body: JSON.stringify({ isCompleted: !task.isCompleted }),
       });

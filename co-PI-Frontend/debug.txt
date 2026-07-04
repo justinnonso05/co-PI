@@ -1,0 +1,4 @@
+[PublicProfile] Fetching http://localhost:8000/api/users/profile/undefined
+[PublicProfile] Fetch failed with status 404 for http://localhost:8000/api/users/profile/undefined
+[PublicProfile] Fetching http://localhost:8000/api/users/profile/undefined
+[PublicProfile] Fetch failed with status 404 for http://localhost:8000/api/users/profile/undefined

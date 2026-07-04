@@ -37,8 +37,9 @@ export function ProposalEditor({ repositoryId, documentId }: { repositoryId: str
       // Extremely basic trigger: if user typed "@coPI draft intro", we can parse it.
       // In a real app, you'd use a popover menu.
       const lastLineStr = text.substring(0, cursorIndex).split('\n').pop() || '';
-      if (lastLineStr.startsWith('@coPI ') && lastLineStr.endsWith('...')) {
-        const prompt = lastLineStr.replace('@coPI ', '').replace('...', '').trim();
+      const match = lastLineStr.match(/^@copi\s+(.*?)\.\.\.$/i);
+      if (match) {
+        const prompt = match[1].trim();
         if (prompt) {
           setIsStreaming(true);
           // Delete the prompt trigger text so AI can replace it

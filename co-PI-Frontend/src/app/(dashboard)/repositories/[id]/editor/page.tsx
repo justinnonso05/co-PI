@@ -180,8 +180,10 @@ export default function CollaborativeEditorPage() {
           const text = quill.getText();
           const cursorIndex = quill.getSelection()?.index || 0;
           const lastLineStr = text.substring(0, cursorIndex).split('\n').pop() || '';
-          if (lastLineStr.startsWith('@coPI ') && lastLineStr.endsWith('...')) {
-            const prompt = lastLineStr.replace('@coPI ', '').replace('...', '').trim();
+
+          const match = lastLineStr.match(/^@copi\s+(.*?)\.\.\.$/i);
+          if (match) {
+            const prompt = match[1].trim();
             if (prompt) {
               setIsStreaming(true);
               const promptIndex = cursorIndex - lastLineStr.length;
@@ -355,11 +357,9 @@ export default function CollaborativeEditorPage() {
             <div className="editor-save-status">
               {isStreaming ? <span style={{ color: '#2A7C75', fontWeight: 600, animation: 'pulse 2s infinite' }}>@coPI is typing...</span> : (saving ? 'Saving...' : 'Saved')}
             </div>
-            {(doc?.title?.toLowerCase().includes('literature') || doc?.title?.toLowerCase().includes('data') || doc?.title?.toLowerCase().includes('analysis')) && (
-              <button onClick={() => setShowAiTools(true)} className="dash-btn-ghost" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', color: '#2A7C75' }}>
-                ✨ AI Tools
-              </button>
-            )}
+            <button onClick={() => setShowAiTools(true)} className="dash-btn-ghost" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', color: '#2A7C75' }}>
+              ✨ AI Tools
+            </button>
             <button onClick={() => setShowHints(true)} className="dash-btn-ghost" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
               💡 {doc?.title?.toLowerCase().includes('literature') ? 'Literature Review Guide' : doc?.title?.toLowerCase().includes('qualitative') || doc?.title?.toLowerCase().includes('data') ? 'Data Collection Guide' : doc?.title?.toLowerCase().includes('report') ? 'Report Writing Guide' : 'Proposal Guidelines'}
             </button>
@@ -463,7 +463,7 @@ export default function CollaborativeEditorPage() {
 
         {/* AI Tools Side Panel (Overlay) */}
         <aside style={{ 
-          position: 'absolute',
+          position: 'fixed',
           top: 0,
           right: 0,
           bottom: 0,
@@ -479,23 +479,21 @@ export default function CollaborativeEditorPage() {
           gap: '2rem',
           transform: showAiTools && !isFullScreen ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease',
-          zIndex: 50
+          zIndex: 1000
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ fontSize: '1.25rem', margin: 0, color: '#2A7C75', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>✨ AI Tools</h2>
             <button onClick={() => setShowAiTools(false)} className="dash-btn-ghost" style={{ padding: '0.2rem 0.5rem' }}>✕</button>
           </div>
 
-          {doc?.title?.toLowerCase().includes('literature') && (
-            <LiteratureDigest 
-              repositoryId={projectId} 
-              documentId={documentId!} 
-              editorText={quillRef.current?.getText()} 
-              onInsert={handleInsertText}
-            />
-          )}
+          <LiteratureDigest 
+            repositoryId={projectId} 
+            documentId={documentId!} 
+            editorText={quillRef.current?.getText()} 
+            onInsert={handleInsertText}
+          />
 
-          {(doc?.title?.toLowerCase().includes('data') || doc?.title?.toLowerCase().includes('analysis')) && (
+          {(doc?.title?.toLowerCase().includes('data') || doc?.title?.toLowerCase().includes('analysis') || doc?.title?.toLowerCase().includes('survey')) && (
             <DatasetReview 
               repositoryId={projectId} 
               documentId={documentId!} 

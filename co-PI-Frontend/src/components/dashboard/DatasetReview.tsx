@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { AI_HACKATHON } from '@/lib/endpoints';
 import { apiFetch } from '@/lib/api';
 
-export default function DatasetReview({ repositoryId, documentId, onInsert, rawData }: { repositoryId: string, documentId?: string, onInsert?: (text: string) => void, rawData?: any[] }) {
+export default function DatasetReview({ repositoryId, documentId, onInsert, rawData, actionButtonText }: { repositoryId: string, documentId?: string, onInsert?: (text: string) => void, rawData?: any[], actionButtonText?: string }) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<{ stats: string, review: any } | null>(null);
@@ -120,7 +120,7 @@ export default function DatasetReview({ repositoryId, documentId, onInsert, rawD
               className="dash-btn-primary" 
               style={{ background: '#2A7C75' }}
             >
-              Insert into Editor
+              {actionButtonText || 'Insert into Editor'}
             </button>
           </div>
         </div>

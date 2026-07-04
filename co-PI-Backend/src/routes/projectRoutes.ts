@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { ProjectController } from '../controllers/ProjectController';
 import { ApplicationController } from '../controllers/ApplicationController';
+import { ChatController } from '../controllers/ChatController';
 import { authenticateJWT } from '../middlewares/authMiddleware';
 import { requireRole } from '../middlewares/rbacMiddleware';
 
@@ -165,5 +166,8 @@ router.delete('/:id/members/:userId', authenticateJWT, requireRole(['PI']), Proj
 
 /** GET /api/projects/:id/applications — list pending applicants (PI only) */
 router.get('/:id/applications', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR']), ApplicationController.listApplications);
+
+// Chat
+router.get('/:id/chat', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR', 'ASSISTANT', 'REVIEWER']), ChatController.getChatHistory);
 
 export default router;

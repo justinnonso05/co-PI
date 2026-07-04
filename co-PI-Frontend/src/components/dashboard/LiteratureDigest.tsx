@@ -55,7 +55,7 @@ export default function LiteratureDigest({ repositoryId, documentId, editorText,
   return (
     <div style={{ padding: '1.5rem', background: 'var(--paper)', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
       <h3 style={{ margin: '0 0 1rem 0', color: '#111', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        📚 AI Literature Digest
+        ✨ AI Document Assistant
       </h3>
       
       {!results ? (
@@ -83,7 +83,7 @@ export default function LiteratureDigest({ repositoryId, documentId, editorText,
 
           {mode === 'editor' && (
             <p style={{ fontSize: '0.9rem', color: 'gray', margin: 0 }}>
-              The AI will read your current editor draft and generate a synthesized digest and gap analysis.
+              The AI will read your current editor draft and generate a synthesized summary or answer your custom prompt.
             </p>
           )}
 
@@ -107,7 +107,7 @@ export default function LiteratureDigest({ repositoryId, documentId, editorText,
             className="dash-btn-primary"
             style={{ alignSelf: 'flex-start', background: '#2A7C75', marginTop: '0.5rem' }}
           >
-            {loading ? 'Synthesizing Literature...' : 'Generate Digest'}
+            {loading ? 'Analyzing Document...' : 'Analyze Document'}
           </button>
         </div>
       ) : (

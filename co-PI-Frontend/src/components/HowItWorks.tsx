@@ -5,15 +5,15 @@ import { useEffect } from 'react';
 const TITLE = [
   { id: 'tw1', text: 'Your research,' },
   { id: 'tw2', text: 'managed with'   },
-  { id: 'tw3', text: 'precision.'     },
+  { id: 'tw3', text: 'an AI agent.'     },
 ];
-const NOTE = '← collaborate, track, and publish from one hub';
+const NOTE = '← build, track, and publish from one hub';
 const LIST = [
-  'Create projects and assign roles across your team',
-  'Collaborate in real time with a live document editor',
+  'Create repositories and assign roles across your team',
+  'Collaborate in real time with an embedded AI assistant',
   'Design and distribute surveys linked to your dataset',
-  'Track milestones and receive deadline notifications',
-  'Log journal articles, reports, and ethical clearances',
+  'Track milestones and let co-PI remember decisions',
+  'Write documentation, proposals, and papers collaboratively',
 ];
 
 function typeInto(el: HTMLElement, text: string, delay: number, speed: number, done?: () => void) {

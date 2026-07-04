@@ -5,39 +5,39 @@ import '../mobile-pins.css';
 
 const PINS = [
   {
-    cls: 'pin-1', rot: '-2.5', type: 'Featured · Multi-team',
-    title: 'Protein Folding in High-Temp Environments',
-    body: 'Cross-institutional study spanning 6 universities. Thermophilic protein structural integrity under extreme conditions.',
+    cls: 'pin-1', rot: '-2.5', type: 'Featured · Open Source',
+    title: 'Serverless Edge Architecture',
+    body: 'Cross-functional study optimizing cold starts and runtime distribution for edge applications.',
     progress: 72, researchers: 18,
   },
   {
-    cls: 'pin-2', rot: '1.8', type: 'Grant Funded',
-    title: 'AI Ethics for Developing Economies',
-    body: 'Policy collaboration building context-aware frameworks for responsible AI deployment in the Global South.',
+    cls: 'pin-2', rot: '1.8', type: 'Sponsored',
+    title: 'AI-Agent Orchestration',
+    body: 'Building context-aware routing frameworks for multiple LLM providers in production environments.',
     progress: 40, researchers: 7,
   },
   {
     cls: 'pin-3', rot: '-1.2', type: 'Open Collaboration',
-    title: 'Urban Green Space & Mental Health',
-    body: 'Longitudinal study correlating urban ecology indices with clinical mental wellness metrics across 12 cities.',
+    title: 'Next-Gen Web Components',
+    body: 'Developing accessible, framework-agnostic UI components with native browser APIs.',
     progress: 58, researchers: 11,
   },
   {
-    cls: 'pin-4', rot: '2.0', type: 'New Node',
-    title: 'Low-cost Spectroscopy for Agriculture',
-    body: 'Hardware-first approach to bringing lab-grade diagnostics to smallholder farms in West Africa.',
+    cls: 'pin-4', rot: '2.0', type: 'New Protocol',
+    title: 'Decentralized Identity Auth',
+    body: 'Hardware-first approach to bringing zero-knowledge proofs to mobile applications.',
     progress: 22, researchers: 4,
   },
   {
     cls: 'pin-5', rot: '1.5', type: 'Breakthrough',
-    title: 'Coral Reef Regeneration via Electrodeposition',
-    body: 'Marine biology meets materials science. Accelerated aragonite formation using low-voltage seawater systems.',
+    title: 'Distributed State Synchronization',
+    body: 'CRDTs meet edge databases. Resolving complex conflicts without centralized arbiters.',
     progress: 89, researchers: 9,
   },
   {
     cls: 'pin-6', rot: '-2.0', type: 'Seeking Collaborators',
-    title: 'Decolonising Research Methodology',
-    body: 'A humanities & social science initiative challenging Eurocentric epistemic frameworks in academic publishing.',
+    title: 'Real-time Video Processing pipeline',
+    body: 'An initiative to build a low-latency WebRTC pipeline using WebAssembly and Rust.',
     progress: 15, researchers: 3,
   },
 ];
@@ -136,7 +136,7 @@ export default function CTASection() {
   return (
     <section className="pinboard-section" id="projects">
       <h2 className="pinboard-title reveal-up">
-        ACTIVE<br /><span>RESEARCH</span>
+        POPULAR<br /><span>REPOSITORIES</span>
       </h2>
       <div className="pinboard" id="pinboard">
         {PINS.map(pin => (

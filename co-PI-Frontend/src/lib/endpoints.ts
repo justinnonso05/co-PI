@@ -23,6 +23,7 @@ export const AI_HACKATHON = {
 export const USERS = {
   SEARCH: (query: string) => `${BASE}/api/users?q=${encodeURIComponent(query)}`,
   PROFILE: `${BASE}/api/users/profile`,
+  PUBLIC_PROFILE: (username: string) => `${BASE}/api/users/profile/${username}`,
 } as const;
 
 // ── Activities ────────────────────────────────────────────────────
@@ -40,6 +41,7 @@ export const PROJECTS = {
   REMOVE_MEMBER: (id: string, userId: string) => `${BASE}/api/repositories/${id}/members/${userId}`,
   UPDATE_STATUS: (id: string) => `${BASE}/api/repositories/${id}/status`,
   UPDATE_VISIBILITY: (id: string) => `${BASE}/api/repositories/${id}/visibility`,
+  CHAT_HISTORY:  (id: string) => `${BASE}/api/repositories/${id}/chat`,
   
   // Proposal Editor AI Endpoints
   PROPOSAL_AI_DRAFT: `${BASE}/api/ai/proposal/draft`,
@@ -89,6 +91,8 @@ export const SURVEYS = {
   CREATE:           (projectId: string) => `${BASE}/api/repositories/${projectId}/surveys`,
   DETAIL:           (surveyId: string)  => `${BASE}/api/surveys/${surveyId}`,
   RECORD_RESPONSE:  (surveyId: string)  => `${BASE}/api/surveys/${surveyId}/responses`,
+  GET_RESPONSES:    (surveyId: string)  => `${BASE}/api/surveys/${surveyId}/responses`,
+  SUBMIT_RESPONSE:  (surveyId: string)  => `${BASE}/api/surveys/${surveyId}/responses`,
   // Next-gen: generate full survey from text
   AI_GENERATE:      `${BASE}/api/ai/surveys/generate`,
 };

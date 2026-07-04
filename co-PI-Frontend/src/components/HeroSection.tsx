@@ -5,13 +5,13 @@ import { apiFetch } from '@/lib/api';
 import { DISCOVERY } from '@/lib/endpoints';
 
 const HERO_NAMES = [
-  'Dr. A. Okafor', 'Prof. S. Lohmann', 'J. Mensah', 'Dr. Y. Tanaka',
-  'Dr. P. Mehta', 'C. Eze', 'Prof. I. Ferreira', 'Dr. R. Singh',
-  'K. Yamamoto', 'Dr. L. Boateng', 'M. Osei', 'Prof. Z. Ali',
-  'Dr. B. Costa', 'S. Nakamura', 'Dr. F. Müller', 'T. Ibrahim',
+  'Ada Okafor', 'S. Lohmann', 'J. Mensah', 'Yuki Tanaka',
+  'Priya Mehta', 'C. Eze', 'Ines Ferreira', 'Ravi Singh',
+  'K. Yamamoto', 'L. Boateng', 'M. Osei', 'Z. Ali',
+  'B. Costa', 'S. Nakamura', 'F. Müller', 'T. Ibrahim',
 ];
 
-const TAGS = ['AI in Healthcare', 'Sustainable Energy', 'Quantum Computing', 'Educational Psychology', 'Urban Planning'];
+const TAGS = ['Machine Learning', 'Open Source', 'Data Engineering', 'Systems Architecture', 'Web3 & Crypto'];
 
 type CanvasNode = {
   x: number; y: number;
@@ -305,16 +305,16 @@ export default function HeroSection() {
   return (
     <section className="hero">
       <div className="hero-left">
-        <p className="hero-eyebrow">Collaborative Research Management Platform</p>
+        <p className="hero-eyebrow">The AI-Native Research Workspace</p>
 
         <h1 className="hero-h1">
-          Where<br />
-          <span className="italic">research</span><br />
-          gets done.
+          Research,<br />
+          <span className="italic">accelerated by</span><br />
+          co-PI.
         </h1>
 
         <p className="hero-body">
-          A unified workspace for the full academic research lifecycle — manage projects, collaborate in real time, survey participants, and publish outputs.
+          A unified workspace for the full research lifecycle — manage repositories, collaborate in real time, and let your embedded AI principal investigator draft proposals and remember context.
         </p>
 
         <div className="hero-search-row relative">
@@ -322,7 +322,7 @@ export default function HeroSection() {
             ref={inputRef}
             type="text"
             id="hero-input"
-            placeholder="Search a project, researcher, or field…"
+            placeholder="Search a repository, researcher, or field…"
             onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
             disabled={isSearching}
           />

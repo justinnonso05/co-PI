@@ -134,5 +134,117 @@ export const setupCollaborationSockets = (serverIo: Server) => {
       }
     });
     
+    // ------------------------------------------------------------------------
+    // Chat & Online Presence Events
+    // ------------------------------------------------------------------------
+
+    socket.on('set-online-status', (payload: { userId: string, status: string }) => {
+      // simple approach: broadcast to all
+      io.emit('user-status-changed', payload);
+    });
+
+    socket.on('join-chat', (projectId: string, userId: string) => {
+      socket.join(`chat-${projectId}`);
+      console.log(`User ${userId} joined chat room: chat-${projectId}`);
+    });
+
+    socket.on('leave-chat', (projectId: string, userId: string) => {
+      socket.leave(`chat-${projectId}`);
+    });
+
+    socket.on('typing-start', (projectId: string, payload: { userId: string, name: string }) => {
+      socket.to(`chat-${projectId}`).emit('typing-start', payload);
+    });
+
+    socket.on('typing-stop', (projectId: string, userId: string) => {
+      socket.to(`chat-${projectId}`).emit('typing-stop', { userId });
+    });
+
+    socket.on('send-chat-message', async (projectId: string, payload: { userId: string, content: string }) => {
+      try {
+        // Save user message to DB
+        const chatMsg = await prisma.chatMessage.create({
+          data: {
+            projectId,
+            userId: payload.userId,
+            content: payload.content,
+            isAiResponse: false,
+          },
+          include: {
+            user: {
+              select: { id: true, firstName: true, lastName: true, email: true }
+            }
+          }
+        });
+
+        // Broadcast user message
+        io.to(`chat-${projectId}`).emit('receive-chat-message', chatMsg);
+
+        // Check if message mentions @copi (case insensitive)
+        if (payload.content.toLowerCase().startsWith('@copi')) {
+          const prompt = payload.content.replace(/^@copi\s*/i, '').trim() || 'Hello';
+          
+          // Get last 10 messages for context
+          const lastMessages = await prisma.chatMessage.findMany({
+            where: { projectId },
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+            include: { user: { select: { firstName: true } } }
+          });
+          
+          const historyContext = lastMessages.reverse().map(m => 
+            `${m.isAiResponse ? 'coPI' : m.user.firstName}: ${m.content}`
+          ).join('\n');
+
+          const systemPrompt = `You are an AI co-PI in a real-time team chat. Reply to the user's prompt naturally. Here is the recent chat history:\n\n${historyContext}`;
+
+          const { BtlRuntimeService } = require('../services/btlRuntime.service');
+          const stream = BtlRuntimeService.createChatCompletionStream({
+            repositoryId: projectId,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: prompt }
+            ]
+          });
+
+          // Create a placeholder message in DB for the AI response
+          // We don't have an AI user, so we link it to the user who requested it or handle it in UI
+          const aiMsgId = `ai-${Date.now()}`;
+          
+          // Emit start of AI stream
+          io.to(`chat-${projectId}`).emit('chat-copi-start', { 
+            id: aiMsgId, 
+            projectId, 
+            userId: payload.userId, 
+            content: '', 
+            isAiResponse: true,
+            createdAt: new Date().toISOString()
+          });
+
+          let fullResponse = '';
+          for await (const chunk of stream) {
+            fullResponse += chunk;
+            io.to(`chat-${projectId}`).emit('chat-copi-chunk', { id: aiMsgId, chunk });
+          }
+
+          io.to(`chat-${projectId}`).emit('chat-copi-end', { id: aiMsgId });
+
+          // Save AI response to DB
+          await prisma.chatMessage.create({
+            data: {
+              id: aiMsgId.length < 36 ? undefined : aiMsgId, // Let prisma gen UUID if needed
+              projectId,
+              userId: payload.userId, // We attribute it to the requester but mark it as AI
+              content: fullResponse,
+              isAiResponse: true,
+            }
+          });
+        }
+
+      } catch (err) {
+        console.error('Failed to send chat message:', err);
+      }
+    });
+
   });
 };

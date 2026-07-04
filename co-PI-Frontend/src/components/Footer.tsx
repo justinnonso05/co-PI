@@ -4,12 +4,12 @@ import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 
 const ROLL = [
-  { index: '01', name: 'Prof. Ada Okafor',    field: 'Biomedical AI'  },
-  { index: '02', name: 'Dr. James Mensah',    field: 'Systems Eng.'   },
-  { index: '03', name: 'Dr. Yuki Tanaka',     field: 'Marine Biology' },
-  { index: '04', name: 'Prof. Priya Mehta',   field: 'Climate Sci.'   },
-  { index: '05', name: 'Chukwuemeka Eze',     field: 'AgriTech'       },
-  { index: '06', name: 'Prof. Ines Ferreira', field: 'Ecology'        },
+  { index: '01', name: 'Ada Okafor',    field: 'AI Engineer'  },
+  { index: '02', name: 'James Mensah',    field: 'Systems Arch.'   },
+  { index: '03', name: 'Yuki Tanaka',     field: 'Data Science' },
+  { index: '04', name: 'Priya Mehta',   field: 'Cloud Eng.'   },
+  { index: '05', name: 'Chukwuemeka Eze',     field: 'Web3 & Crypto'       },
+  { index: '06', name: 'Ines Ferreira', field: 'Product Mgt.'        },
 ];
 
 export default function Footer() {
@@ -70,10 +70,10 @@ export default function Footer() {
         <div className="reveal-up">
           <span className="quote-mark">"</span>
           <blockquote>
-            Research Hub gave our team one place to think, plan, and publish together — without the chaos of email threads and version conflicts.
+            co-PI gave our team one place to think, plan, and ship together — with an AI agent that actually remembers our decisions.
           </blockquote>
           <p className="quote-attr">
-            — <strong>Dr. Ada Okafor</strong>, Principal Investigator · University of Lagos
+            — <strong>Ada Okafor</strong>, Engineering Lead · Distributed Systems Group
           </p>
         </div>
 
@@ -102,7 +102,7 @@ export default function Footer() {
             <em>Build something that matters.</em>
           </h2>
           <p className="cta-sub">
-            Join your team on Research Hub. Create projects, assign roles, collaborate in real time, and take your work from idea to publication.
+            Join your team on co-PI. Create repositories, assign roles, collaborate in real time, and let your AI assistant handle the overhead.
           </p>
         </div>
         <div className="cta-actions reveal-up delay-1">
@@ -113,8 +113,8 @@ export default function Footer() {
 
       {/* ── FOOTER ─── */}
       <footer>
-        <span className="footer-logo">Research Hub</span>
-        <span className="footer-mono">Collaborative Research Management · CRMP  · 2025</span>
+        <span className="footer-logo">co-PI</span>
+        <span className="footer-mono">AI-Native Project Management  · 2026</span>
       </footer>
     </>
   );

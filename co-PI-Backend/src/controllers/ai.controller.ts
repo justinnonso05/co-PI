@@ -51,15 +51,19 @@ export class AiController {
         if (hasMissing) missingValuesCount++;
       });
 
+      const dataSample = rows.slice(0, 50);
       const statsSummary = `
 Dataset Stats:
 - Total Rows: ${totalRows}
 - Rows with missing values: ${missingValuesCount}
 - Duplicate rows: ${duplicateCount}
+
+Data Sample (First ${dataSample.length} rows):
+${JSON.stringify(dataSample, null, 2)}
       `;
 
       // 2. Ask BTL Runtime for qualitative writeup
-      const systemInstruction = 'You are an AI data reviewer. Given the statistical summary of a dataset, return a JSON object with a single "findings" array. Each item should have "type" (e.g. "missing_values", "duplicates", "outliers") and "description". Do not invent new stats, only comment on the provided ones.' + 
+      const systemInstruction = 'You are an AI data reviewer. Given the statistical summary and data sample of a dataset, return a JSON object with a single "findings" array. Each item should have "type" (e.g. "missing_values", "duplicates", "outliers", "trends") and "description". Answer any user questions based on the sample.' + 
         (customPrompt ? `\n\nAdditional user instructions: ${customPrompt}` : '');
 
       const messages: BTLMessage[] = [

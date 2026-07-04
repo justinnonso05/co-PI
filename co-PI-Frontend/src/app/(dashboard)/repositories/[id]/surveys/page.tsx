@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch, getToken } from '@/lib/api';
 import { SURVEYS, PROJECTS, DOCUMENTS, AI_HACKATHON } from '@/lib/endpoints';
 import './survey-mobile.css';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts';
+import DatasetReview from '@/components/dashboard/DatasetReview';
 
 type QuestionType = 'SHORT_TEXT' | 'LONG_TEXT' | 'RADIO' | 'CHECKBOX';
 
@@ -17,16 +18,17 @@ interface Question {
   options: string[];
 }
 
-export default function SurveyPage() {
+export default function SurveyPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const projectId = resolvedParams.id as string;
   const router = useRouter();
-  const params = useParams();
   const searchParams = useSearchParams();
-  const projectId = params.id as string;
   const surveyId = searchParams.get('survey');
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
+  const [showAiPanel, setShowAiPanel] = useState(false);
   
   // Builder State
   const [title, setTitle] = useState('');
@@ -164,49 +166,7 @@ export default function SurveyPage() {
     return Object.keys(counts).map(key => ({ name: key, count: counts[key] }));
   };
 
-  const handleAnalyzeInDocument = async () => {
-    if (responses.length === 0) return;
-    setAnalyzing(true);
-    setError('');
-
-    try {
-      // 1. Create a new document
-      const docRes = await apiFetch<any>(DOCUMENTS.CREATE(projectId), {
-        method: 'POST',
-        body: JSON.stringify({ title: 'Survey Data Analysis' })
-      });
-      const newDocId = docRes.document.id;
-
-      // 2. Perform the dataset review using the raw survey responses
-      const formData = new FormData();
-      formData.append('repositoryId', projectId);
-      formData.append('documentId', newDocId);
-      formData.append('rawData', JSON.stringify(responses));
-      // Optional: default custom prompt
-      formData.append('customPrompt', 'Summarize key trends from this survey data.');
-
-      const aiData = await apiFetch<any>(AI_HACKATHON.DATASET_REVIEW, {
-        method: 'POST',
-        body: formData
-      });
-
-      // 3. Format the result as text
-      const text = `Survey Data Analysis\n\nStatistical Summary:\n${aiData.stats}\n\nAI Findings:\n${aiData.review?.findings?.map((f: any) => `- ${f.type}: ${f.description}`).join('\n') || 'None'}\n`;
-      const content = { ops: [{ insert: text }] };
-
-      // 4. Save content to the new document
-      await apiFetch(DOCUMENTS.SAVE(newDocId), {
-        method: 'PUT',
-        body: JSON.stringify({ content })
-      });
-
-      // 5. Navigate to the editor
-      router.push(`/dashboard/repositories/${projectId}/editor?doc=${newDocId}`);
-    } catch (err: any) {
-      setError(err.message || 'Failed to analyze responses');
-      setAnalyzing(false);
-    }
-  };
+  // handleAnalyzeInDocument logic moved to the AI Panel's onInsert callback
 
   if (loading) return <div className="dash-shell"><div className="dash-main" style={{ padding: '2rem' }}>Loading...</div></div>;
 
@@ -230,12 +190,12 @@ export default function SurveyPage() {
               </div>
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <button 
-                  onClick={handleAnalyzeInDocument}
+                  onClick={() => setShowAiPanel(true)}
                   disabled={analyzing || responses.length === 0}
                   className="dash-btn-primary"
                   style={{ background: '#2A7C75', color: '#F2EDE4', border: 'none', borderRadius: '6px', padding: '0.5rem 1rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                 >
-                  {analyzing ? 'Analyzing...' : '✨ Analyze Responses in Document'}
+                  {analyzing ? 'Saving...' : '✨ AI Chat & Analyze'}
                 </button>
                 <button onClick={exportCSV} className="dash-btn-primary survey-export-btn" disabled={responses.length === 0}>
                   Export CSV
@@ -419,6 +379,75 @@ export default function SurveyPage() {
           </div>
         )}
       </main>
+
+      {/* AI Tools Side Panel (Overlay) */}
+      <aside style={{ 
+        position: 'fixed',
+        top: 0,
+        right: 0,
+        bottom: 0,
+        width: '400px', 
+        maxWidth: '100%',
+        background: '#ffffff', 
+        borderLeft: '1px solid rgba(0,0,0,0.1)', 
+        boxShadow: showAiPanel ? '-4px 0 24px rgba(0,0,0,0.08)' : 'none',
+        display: 'flex', 
+        flexDirection: 'column', 
+        padding: '1.5rem', 
+        overflowY: 'auto',
+        gap: '2rem',
+        transform: showAiPanel ? 'translateX(0)' : 'translateX(100%)',
+        transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease',
+        zIndex: 1000
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontSize: '1.25rem', margin: 0, color: '#2A7C75', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>✨ AI Analysis</h2>
+          <button onClick={() => setShowAiPanel(false)} className="dash-btn-ghost" style={{ padding: '0.2rem 0.5rem' }}>✕</button>
+        </div>
+
+        <DatasetReview 
+          repositoryId={projectId} 
+          rawData={responses.map(r => {
+            const mappedAnswers: Record<string, any> = {};
+            if (surveySchema?.schemaJson?.questions) {
+              surveySchema.schemaJson.questions.forEach((q: any) => {
+                mappedAnswers[q.question] = r.answers[q.id];
+              });
+            } else {
+              return r;
+            }
+            return {
+              "Submitted At": r.createdAt,
+              ...mappedAnswers
+            };
+          })}
+          actionButtonText="Save to New Document"
+          onInsert={async (text) => {
+            try {
+              setAnalyzing(true);
+              // 1. Create a new document
+              const docRes = await apiFetch<any>(DOCUMENTS.CREATE(projectId), {
+                method: 'POST',
+                body: JSON.stringify({ title: `${surveySchema?.title || 'Survey'} Analysis` })
+              });
+              const newDocId = docRes.document.id;
+
+              // 2. Save content to the new document
+              await apiFetch(DOCUMENTS.SAVE(newDocId), {
+                method: 'PUT',
+                body: JSON.stringify({ content: { ops: [{ insert: text + '\n' }] } })
+              });
+
+              // 3. Navigate to the editor
+              router.push(`/repositories/${projectId}/editor?doc=${newDocId}`);
+            } catch (err: any) {
+              setError(err.message || 'Failed to save document');
+              setAnalyzing(false);
+            }
+          }}
+        />
+      </aside>
+
     </div>
   );
 }
