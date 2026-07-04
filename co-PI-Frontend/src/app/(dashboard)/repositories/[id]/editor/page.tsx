@@ -9,6 +9,8 @@ import { getSocket } from '@/lib/socket';
 import { apiFetch, getUser } from '@/lib/api';
 import { DOCUMENTS, PROPOSAL, PROJECTS } from '@/lib/endpoints';
 import Link from 'next/link';
+import DatasetReview from '@/components/dashboard/DatasetReview';
+import LiteratureDigest from '@/components/dashboard/LiteratureDigest';
 
 interface Document {
   id: string;
@@ -40,6 +42,7 @@ export default function CollaborativeEditorPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const aiSuggestionRef = useRef<{ index: number, length: number } | null>(null);
   const [hasActiveSuggestion, setHasActiveSuggestion] = useState(false);
+  const [showAiTools, setShowAiTools] = useState(false);
 
   // Load user
   useEffect(() => {
@@ -151,11 +154,27 @@ export default function CollaborativeEditorPage() {
       };
       socket.on('receive-changes', handleReceiveChanges);
 
-      // 4. Handle outgoing text changes
+      let saveTimeout: NodeJS.Timeout | null = null;
       const handleTextChange = (delta: any, oldDelta: any, source: string) => {
         if (source === 'user') {
           socket.emit('send-changes', documentId, delta);
-          debouncedSave();
+          
+          if (saveTimeout) clearTimeout(saveTimeout);
+          saveTimeout = setTimeout(async () => {
+            if (!quillRef.current || !documentId) return;
+            setSaving(true);
+            try {
+              const content = quillRef.current.getContents();
+              await apiFetch(DOCUMENTS.SAVE(documentId), {
+                method: 'PUT',
+                body: JSON.stringify({ content }),
+              });
+            } catch (e) {
+              console.error('Failed to auto-save document:', e);
+            } finally {
+              setSaving(false);
+            }
+          }, 2000);
 
           // @coPI trigger
           const text = quill.getText();
@@ -255,26 +274,7 @@ export default function CollaborativeEditorPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, error, doc, currentUser, documentId]);
 
-  // Auto-save logic
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const debouncedSave = () => {
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(async () => {
-      if (!quillRef.current || !documentId) return;
-      setSaving(true);
-      try {
-        const content = quillRef.current.getContents();
-        await apiFetch(DOCUMENTS.SAVE(documentId), {
-          method: 'PUT',
-          body: JSON.stringify({ content }),
-        });
-      } catch (e) {
-        console.error('Failed to auto-save document:', e);
-      } finally {
-        setSaving(false);
-      }
-    }, 2000);
-  };
+
 
   const acceptAiSuggestion = () => {
     if (quillRef.current && aiSuggestionRef.current) {
@@ -286,10 +286,20 @@ export default function CollaborativeEditorPage() {
 
   const rejectAiSuggestion = () => {
     if (quillRef.current && aiSuggestionRef.current) {
-      quillRef.current.deleteText(aiSuggestionRef.current.index, aiSuggestionRef.current.length);
+      const { index, length } = aiSuggestionRef.current;
+      quillRef.current.deleteText(index, length);
+      aiSuggestionRef.current = null;
+      setHasActiveSuggestion(false);
     }
-    aiSuggestionRef.current = null;
-    setHasActiveSuggestion(false);
+  };
+
+  const handleInsertText = (text: string) => {
+    if (quillRef.current) {
+      const q = quillRef.current;
+      const index = q.getSelection()?.index || q.getLength();
+      q.insertText(index, '\n' + text + '\n');
+      q.setSelection(index + text.length + 2, 0);
+    }
   };
 
   const exportToDoc = () => {
@@ -300,7 +310,7 @@ export default function CollaborativeEditorPage() {
     const postHtml = `</body></html>`;
     const html = preHtml + htmlContent + postHtml;
     
-    const blob = new Blob(['\\ufeff', html], { type: 'application/msword' });
+    const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -345,6 +355,11 @@ export default function CollaborativeEditorPage() {
             <div className="editor-save-status">
               {isStreaming ? <span style={{ color: '#2A7C75', fontWeight: 600, animation: 'pulse 2s infinite' }}>@coPI is typing...</span> : (saving ? 'Saving...' : 'Saved')}
             </div>
+            {(doc?.title?.toLowerCase().includes('literature') || doc?.title?.toLowerCase().includes('data') || doc?.title?.toLowerCase().includes('analysis')) && (
+              <button onClick={() => setShowAiTools(true)} className="dash-btn-ghost" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', color: '#2A7C75' }}>
+                ✨ AI Tools
+              </button>
+            )}
             <button onClick={() => setShowHints(true)} className="dash-btn-ghost" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
               💡 {doc?.title?.toLowerCase().includes('literature') ? 'Literature Review Guide' : doc?.title?.toLowerCase().includes('qualitative') || doc?.title?.toLowerCase().includes('data') ? 'Data Collection Guide' : doc?.title?.toLowerCase().includes('report') ? 'Report Writing Guide' : 'Proposal Guidelines'}
             </button>
@@ -364,8 +379,10 @@ export default function CollaborativeEditorPage() {
         </header>
       )}
 
-      {/* Editor Container */}
-      <main style={{ 
+      {/* Main Content Area (Editor + Side Panel) */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
+        {/* Editor Container */}
+        <main style={{ 
         flex: 1, 
         padding: isFullScreen ? '0' : '2rem', 
         display: 'flex', 
@@ -442,7 +459,51 @@ export default function CollaborativeEditorPage() {
             </div>
           </div>
         )}
-      </main>
+        </main>
+
+        {/* AI Tools Side Panel (Overlay) */}
+        <aside style={{ 
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: '400px', 
+          maxWidth: '100%',
+          background: '#ffffff', 
+          borderLeft: '1px solid rgba(0,0,0,0.1)', 
+          boxShadow: showAiTools && !isFullScreen ? '-4px 0 24px rgba(0,0,0,0.08)' : 'none',
+          display: 'flex', 
+          flexDirection: 'column', 
+          padding: '1.5rem', 
+          overflowY: 'auto',
+          gap: '2rem',
+          transform: showAiTools && !isFullScreen ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease',
+          zIndex: 50
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ fontSize: '1.25rem', margin: 0, color: '#2A7C75', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>✨ AI Tools</h2>
+            <button onClick={() => setShowAiTools(false)} className="dash-btn-ghost" style={{ padding: '0.2rem 0.5rem' }}>✕</button>
+          </div>
+
+          {doc?.title?.toLowerCase().includes('literature') && (
+            <LiteratureDigest 
+              repositoryId={projectId} 
+              documentId={documentId!} 
+              editorText={quillRef.current?.getText()} 
+              onInsert={handleInsertText}
+            />
+          )}
+
+          {(doc?.title?.toLowerCase().includes('data') || doc?.title?.toLowerCase().includes('analysis')) && (
+            <DatasetReview 
+              repositoryId={projectId} 
+              documentId={documentId!} 
+              onInsert={handleInsertText}
+            />
+          )}
+        </aside>
+      </div>
 
       {/* Hints Modal */}
       {showHints && (

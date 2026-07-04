@@ -170,7 +170,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (activeTab === 'DISCOVER') {
       setDiscoverLoading(true);
-      apiFetch<DiscoverProject[]>(DISCOVERY.UNIVERSITY)
+      apiFetch<DiscoverProject[]>(DISCOVERY.PUBLIC)
         .then(data => setDiscoverProjects(data))
         .catch(console.error)
         .finally(() => setDiscoverLoading(false));
@@ -412,14 +412,14 @@ export default function DashboardPage() {
               {discoverLoading && (
                 <div className="dash-empty">
                   <span className="dash-empty-icon animate-spin">◌</span>
-                  <p>Discovering projects at your university…</p>
+                  <p>Discovering public projects…</p>
                 </div>
               )}
 
               {!discoverLoading && discoverProjects.length === 0 && (
                 <div className="dash-empty">
                   <span className="dash-empty-icon">◈</span>
-                  <p>No public projects found at your university yet.</p>
+                  <p>No public projects found yet.</p>
                 </div>
               )}
 

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import Papa from 'papaparse';
-const pdf = require('pdf-parse');
+import { PDFParse } from 'pdf-parse';
 import { BtlRuntimeService, BTLMessage } from '../services/btlRuntime.service';
 import { prisma } from '../db';
 
@@ -95,23 +95,28 @@ Dataset Stats:
 
   static async literatureDigest(req: Request, res: Response): Promise<void> {
     try {
-      const { repositoryId, documentId } = req.body;
+      const { repositoryId, documentId, textContext } = req.body;
       const files = req.files as Express.Multer.File[];
 
       if (!repositoryId || !documentId) {
         res.status(400).json({ error: 'repositoryId and documentId are required.' });
         return;
       }
-      if (!files || files.length === 0) {
-        res.status(400).json({ error: 'At least one PDF file is required.' });
-        return;
-      }
 
-      // 1. Extract text from PDFs
       let combinedText = '';
-      for (const file of files) {
-        const data = await pdf(file.buffer);
-        combinedText += `\n--- Document ---\n${data.text.substring(0, 15000)}`; // limit to avoid token limits
+
+      if (textContext) {
+        combinedText = textContext.substring(0, 30000);
+      } else if (files && files.length > 0) {
+        // 1. Extract text from PDFs
+        for (const file of files) {
+          const parser = new PDFParse({ data: file.buffer });
+          const data = await parser.getText();
+          combinedText += `\n--- Document ---\n${data.text.substring(0, 15000)}`; // limit to avoid token limits
+        }
+      } else {
+        res.status(400).json({ error: 'Either PDF files or textContext must be provided.' });
+        return;
       }
 
       // 2. Ask BTL Runtime for digest

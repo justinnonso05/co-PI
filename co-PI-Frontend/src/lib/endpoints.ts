@@ -12,6 +12,13 @@ export const AUTH = {
   REGISTER: `${BASE}/api/auth/register`,
 } as const;
 
+// ── AI Hackathon Features ─────────────────────────────────────────
+export const AI_HACKATHON = {
+  DATASET_REVIEW:    `${BASE}/api/ai/dataset-review`,
+  LITERATURE_DIGEST: `${BASE}/api/ai/literature-digest`,
+  MEMORY_LOOKUP:     (repoId: string, query: string) => `${BASE}/api/ai/memory-lookup?repositoryId=${repoId}&query=${encodeURIComponent(query)}`,
+} as const;
+
 // ── Users ─────────────────────────────────────────────────────────
 export const USERS = {
   SEARCH: (query: string) => `${BASE}/api/users?q=${encodeURIComponent(query)}`,
@@ -53,7 +60,7 @@ export const APPLICATIONS = {
 // ── Discovery ─────────────────────────────────────────────────────
 export const DISCOVERY = {
   SEARCH_COUNT: (query: string) => `${BASE}/api/discover/search/count?q=${encodeURIComponent(query)}`,
-  UNIVERSITY: `${BASE}/api/discover/university`,
+  PUBLIC: `${BASE}/api/discover/public`,
   APPLY: (id: string) => `${BASE}/api/discover/apply/${id}`,
 } as const;
 

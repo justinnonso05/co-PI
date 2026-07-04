@@ -448,7 +448,7 @@ export default function ProjectPage() {
   async function handleReviewApplication(appId: string, decision: 'APPROVED' | 'REJECTED') {
     setReviewingApp(appId);
     try {
-      await apiFetch(APPLICATIONS.REVIEW(appId), {
+      await apiFetch(APPLICATIONS.UPDATE(appId), {
         method: 'PATCH',
         body: JSON.stringify({ decision, projectId: id }),
       });

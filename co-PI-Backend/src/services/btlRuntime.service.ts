@@ -29,6 +29,7 @@ export class BtlRuntimeService {
     const payload = {
       model: options.model || 'gpt-4o-mini',
       messages: options.messages,
+      max_tokens: 1500,
       stream: false,
       ...(options.response_format ? { response_format: options.response_format } : {})
     };
@@ -87,6 +88,7 @@ export class BtlRuntimeService {
     const payload = {
       model: options.model || 'gpt-4o-mini',
       messages: options.messages,
+      max_tokens: 1500,
       stream: true,
     };
 
@@ -134,9 +136,14 @@ export class BtlRuntimeService {
             try {
               const data = JSON.parse(dataStr);
               if (data.choices && data.choices.length > 0) {
-                const delta = data.choices[0].delta;
+                const choice = data.choices[0];
+                const delta = choice.delta;
                 if (delta && delta.content) {
                   yield delta.content;
+                }
+                // Handle abrupt cutoffs gracefully
+                if (choice.finish_reason === 'length') {
+                  yield '... [Token limit reached. Type `@coPI continue...` to keep generating]';
                 }
               }
             } catch (err) {
