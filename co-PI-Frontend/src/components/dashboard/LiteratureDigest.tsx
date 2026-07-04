@@ -8,6 +8,7 @@ export default function LiteratureDigest({ repositoryId, documentId, editorText,
   const [results, setResults] = useState<{ digest: any } | null>(null);
   const [error, setError] = useState('');
   const [mode, setMode] = useState<'upload' | 'editor'>('editor');
+  const [customPrompt, setCustomPrompt] = useState('');
 
   const handleAnalyze = async () => {
     if (mode === 'upload' && files.length === 0) {
@@ -30,6 +31,9 @@ export default function LiteratureDigest({ repositoryId, documentId, editorText,
       files.forEach(f => formData.append('files', f));
     } else {
       formData.append('textContext', editorText!);
+    }
+    if (customPrompt.trim()) {
+      formData.append('customPrompt', customPrompt.trim());
     }
 
     try {
@@ -82,6 +86,18 @@ export default function LiteratureDigest({ repositoryId, documentId, editorText,
               The AI will read your current editor draft and generate a synthesized digest and gap analysis.
             </p>
           )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Custom Prompt (Optional)</label>
+            <input 
+              type="text" 
+              className="auth-input" 
+              placeholder="e.g. Focus specifically on methodologies used..."
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              style={{ padding: '0.6rem', fontSize: '0.9rem' }}
+            />
+          </div>
 
           {error && <p style={{ color: 'var(--error)', margin: 0, fontSize: '0.9rem' }}>{error}</p>}
           

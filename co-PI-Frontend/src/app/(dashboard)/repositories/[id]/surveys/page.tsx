@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch, getToken } from '@/lib/api';
-import { SURVEYS, PROJECTS } from '@/lib/endpoints';
+import { SURVEYS, PROJECTS, DOCUMENTS, AI_HACKATHON } from '@/lib/endpoints';
 import './survey-mobile.css';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts';
 
@@ -26,6 +26,7 @@ export default function SurveyPage() {
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
   
   // Builder State
   const [title, setTitle] = useState('');
@@ -163,6 +164,50 @@ export default function SurveyPage() {
     return Object.keys(counts).map(key => ({ name: key, count: counts[key] }));
   };
 
+  const handleAnalyzeInDocument = async () => {
+    if (responses.length === 0) return;
+    setAnalyzing(true);
+    setError('');
+
+    try {
+      // 1. Create a new document
+      const docRes = await apiFetch<any>(DOCUMENTS.CREATE(projectId), {
+        method: 'POST',
+        body: JSON.stringify({ title: 'Survey Data Analysis' })
+      });
+      const newDocId = docRes.document.id;
+
+      // 2. Perform the dataset review using the raw survey responses
+      const formData = new FormData();
+      formData.append('repositoryId', projectId);
+      formData.append('documentId', newDocId);
+      formData.append('rawData', JSON.stringify(responses));
+      // Optional: default custom prompt
+      formData.append('customPrompt', 'Summarize key trends from this survey data.');
+
+      const aiData = await apiFetch<any>(AI_HACKATHON.DATASET_REVIEW, {
+        method: 'POST',
+        body: formData
+      });
+
+      // 3. Format the result as text
+      const text = `Survey Data Analysis\n\nStatistical Summary:\n${aiData.stats}\n\nAI Findings:\n${aiData.review?.findings?.map((f: any) => `- ${f.type}: ${f.description}`).join('\n') || 'None'}\n`;
+      const content = { ops: [{ insert: text }] };
+
+      // 4. Save content to the new document
+      await apiFetch(DOCUMENTS.SAVE(newDocId), {
+        method: 'PUT',
+        body: JSON.stringify({ content })
+      });
+
+      // 5. Navigate to the editor
+      router.push(`/dashboard/repositories/${projectId}/editor?doc=${newDocId}`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to analyze responses');
+      setAnalyzing(false);
+    }
+  };
+
   if (loading) return <div className="dash-shell"><div className="dash-main" style={{ padding: '2rem' }}>Loading...</div></div>;
 
   return (
@@ -176,13 +221,22 @@ export default function SurveyPage() {
 
         {surveyId ? (
           /* ── RESULTS VIEW ── */
-          <div>
-            <div className="survey-results-header">
+          <div style={{ maxWidth: '900px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
               <div>
-                <h1 className="proj-page-title">{surveySchema?.title} - Results</h1>
-                <p className="proj-card-desc">{responses.length} responses</p>
+                <h1 className="proj-page-title" style={{ margin: '0 0 0.5rem 0' }}>{surveySchema?.title} - Results</h1>
+                <p style={{ color: 'var(--text-muted)' }}>{responses.length} total responses</p>
+                {error && <p style={{ color: 'var(--error)', marginTop: '0.5rem' }}>{error}</p>}
               </div>
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button 
+                  onClick={handleAnalyzeInDocument}
+                  disabled={analyzing || responses.length === 0}
+                  className="dash-btn-primary"
+                  style={{ background: '#2A7C75', color: '#F2EDE4', border: 'none', borderRadius: '6px', padding: '0.5rem 1rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  {analyzing ? 'Analyzing...' : '✨ Analyze Responses in Document'}
+                </button>
                 <button onClick={exportCSV} className="dash-btn-primary survey-export-btn" disabled={responses.length === 0}>
                   Export CSV
                 </button>

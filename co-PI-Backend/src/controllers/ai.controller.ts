@@ -8,23 +8,27 @@ export class AiController {
   
   static async datasetReview(req: Request, res: Response): Promise<void> {
     try {
-      const { repositoryId, documentId } = req.body;
+      const { repositoryId, documentId, customPrompt, rawData } = req.body;
       const file = req.file;
 
-      if (!repositoryId || !documentId) {
-        res.status(400).json({ error: 'repositoryId and documentId are required.' });
+      if (!repositoryId) {
+        res.status(400).json({ error: 'repositoryId is required.' });
         return;
       }
-      if (!file) {
-        res.status(400).json({ error: 'CSV file is required.' });
+      if (!file && !rawData) {
+        res.status(400).json({ error: 'Either CSV file or rawData is required.' });
         return;
       }
 
-      // 1. Parse CSV to get deterministic stats
-      const csvString = file.buffer.toString('utf-8');
-      const parsed = Papa.parse(csvString, { header: true, skipEmptyLines: true });
-      
-      const rows = parsed.data as any[];
+      // 1. Parse CSV or rawData to get deterministic stats
+      let rows: any[] = [];
+      if (rawData) {
+        rows = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+      } else if (file) {
+        const csvString = file.buffer.toString('utf-8');
+        const parsed = Papa.parse(csvString, { header: true, skipEmptyLines: true });
+        rows = parsed.data as any[];
+      }
       const totalRows = rows.length;
       let missingValuesCount = 0;
       let duplicateCount = 0;
@@ -55,10 +59,13 @@ Dataset Stats:
       `;
 
       // 2. Ask BTL Runtime for qualitative writeup
+      const systemInstruction = 'You are an AI data reviewer. Given the statistical summary of a dataset, return a JSON object with a single "findings" array. Each item should have "type" (e.g. "missing_values", "duplicates", "outliers") and "description". Do not invent new stats, only comment on the provided ones.' + 
+        (customPrompt ? `\n\nAdditional user instructions: ${customPrompt}` : '');
+
       const messages: BTLMessage[] = [
         {
           role: 'system',
-          content: 'You are an AI data reviewer. Given the statistical summary of a dataset, return a JSON object with a single "findings" array. Each item should have "type" (e.g. "missing_values", "duplicates", "outliers") and "description". Do not invent new stats, only comment on the provided ones.'
+          content: systemInstruction
         },
         {
           role: 'user',
@@ -75,13 +82,18 @@ Dataset Stats:
 
       const responseContent = JSON.parse(btlResponse.choices[0].message.content);
 
-      // 3. Save the review
-      const review = await prisma.datasetReview.create({
-        data: {
-          documentId,
-          findings: responseContent.findings || responseContent
-        }
-      });
+      // 3. Save the review if documentId exists
+      let review = null;
+      if (documentId) {
+        review = await prisma.datasetReview.create({
+          data: {
+            documentId,
+            findings: responseContent.findings || responseContent
+          }
+        });
+      } else {
+        review = { findings: responseContent.findings || responseContent };
+      }
 
       // 4. Extract Fact
       await AiController.extractAndSaveFact(repositoryId, messages, btlResponse.choices[0].message.content, 'dataset');
@@ -95,7 +107,7 @@ Dataset Stats:
 
   static async literatureDigest(req: Request, res: Response): Promise<void> {
     try {
-      const { repositoryId, documentId, textContext } = req.body;
+      const { repositoryId, documentId, textContext, customPrompt } = req.body;
       const files = req.files as Express.Multer.File[];
 
       if (!repositoryId || !documentId) {
@@ -120,10 +132,13 @@ Dataset Stats:
       }
 
       // 2. Ask BTL Runtime for digest
+      const systemInstruction = 'You are an expert research assistant. Read the provided papers and produce a short digest: return a JSON object containing "summary" (a one-line summary per paper as a string) and "gaps" (an array of 2-3 bullet points representing gaps or open questions across all of them).' +
+        (customPrompt ? `\n\nAdditional user instructions: ${customPrompt}` : '');
+
       const messages: BTLMessage[] = [
         {
           role: 'system',
-          content: 'You are an expert research assistant. Read the provided papers and produce a short digest: return a JSON object containing "summary" (a one-line summary per paper as a string) and "gaps" (an array of 2-3 bullet points representing gaps or open questions across all of them).'
+          content: systemInstruction
         },
         {
           role: 'user',

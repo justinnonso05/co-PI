@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import { AI_HACKATHON } from '@/lib/endpoints';
 import { apiFetch } from '@/lib/api';
 
-export default function DatasetReview({ repositoryId, documentId, onInsert }: { repositoryId: string, documentId: string, onInsert?: (text: string) => void }) {
+export default function DatasetReview({ repositoryId, documentId, onInsert, rawData }: { repositoryId: string, documentId?: string, onInsert?: (text: string) => void, rawData?: any[] }) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<{ stats: string, review: any } | null>(null);
   const [error, setError] = useState('');
+  const [customPrompt, setCustomPrompt] = useState('');
 
   const handleUpload = async () => {
-    if (!file) {
-      setError('Please select a CSV file.');
+    if (!file && !rawData) {
+      setError('Please select a CSV file or provide raw data.');
       return;
     }
     
@@ -18,9 +19,19 @@ export default function DatasetReview({ repositoryId, documentId, onInsert }: { 
     setError('');
     
     const formData = new FormData();
-    formData.append('file', file);
+    if (file) {
+      formData.append('file', file);
+    } else if (rawData) {
+      formData.append('rawData', JSON.stringify(rawData));
+    }
+    
     formData.append('repositoryId', repositoryId);
-    formData.append('documentId', documentId);
+    if (documentId) {
+      formData.append('documentId', documentId);
+    }
+    if (customPrompt.trim()) {
+      formData.append('customPrompt', customPrompt.trim());
+    }
 
     try {
       const data = await apiFetch<any>(AI_HACKATHON.DATASET_REVIEW, {
@@ -42,16 +53,31 @@ export default function DatasetReview({ repositoryId, documentId, onInsert }: { 
       
       {!results ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <input 
-            type="file" 
-            accept=".csv" 
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-            style={{ padding: '0.5rem', border: '1px dashed #ccc', borderRadius: '4px' }}
-          />
+          {!rawData && (
+            <input 
+              type="file" 
+              accept=".csv" 
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              style={{ padding: '0.5rem', border: '1px dashed #ccc', borderRadius: '4px' }}
+            />
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Custom Prompt (Optional)</label>
+            <input 
+              type="text" 
+              className="auth-input" 
+              placeholder="e.g. Look for outliers in the age column..."
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              style={{ padding: '0.6rem', fontSize: '0.9rem' }}
+            />
+          </div>
+
           {error && <p style={{ color: 'var(--error)', margin: 0 }}>{error}</p>}
           <button 
             onClick={handleUpload} 
-            disabled={loading || !file}
+            disabled={loading || (!file && !rawData)}
             className="dash-btn-primary"
             style={{ alignSelf: 'flex-start', background: '#2A7C75' }}
           >
