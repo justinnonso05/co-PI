@@ -25,28 +25,30 @@ export const ACTIVITIES = {
 
 // ── Projects ──────────────────────────────────────────────────────
 export const PROJECTS = {
-  LIST:          `${BASE}/api/projects`,
-  CREATE:        `${BASE}/api/projects`,
-  DETAIL:        (id: string) => `${BASE}/api/projects/${id}`,
+  LIST:          `${BASE}/api/repositories`,
+  CREATE:        `${BASE}/api/repositories`,
+  DETAIL:        (id: string) => `${BASE}/api/repositories/${id}`,
 
-  ADD_MEMBER:    (id: string) => `${BASE}/api/projects/${id}/members`,
-  REMOVE_MEMBER: (id: string, userId: string) => `${BASE}/api/projects/${id}/members/${userId}`,
-  UPDATE_STATUS: (id: string) => `${BASE}/api/projects/${id}/status`,
-  UPDATE_VISIBILITY: (id: string) => `${BASE}/api/projects/${id}/visibility`,
-} as const;
+  ADD_MEMBER:    (id: string) => `${BASE}/api/repositories/${id}/members`,
+  REMOVE_MEMBER: (id: string, userId: string) => `${BASE}/api/repositories/${id}/members/${userId}`,
+  UPDATE_STATUS: (id: string) => `${BASE}/api/repositories/${id}/status`,
+  UPDATE_VISIBILITY: (id: string) => `${BASE}/api/repositories/${id}/visibility`,
+  
+  // Proposal Editor AI Endpoints
+  PROPOSAL_AI_DRAFT: `${BASE}/api/ai/proposal/draft`,
+};
 
-// ── Proposals ─────────────────────────────────────────────────────
 export const PROPOSAL = {
-  DRAFT:  (id: string) => `${BASE}/api/projects/${id}/proposal`,
-  SUBMIT: (id: string) => `${BASE}/api/projects/${id}/proposal/submit`,
-  REVIEW: (id: string) => `${BASE}/api/projects/${id}/proposal/review`,
-} as const;
+  DRAFT:  (id: string) => `${BASE}/api/repositories/${id}/proposal`,
+  SUBMIT: (id: string) => `${BASE}/api/repositories/${id}/proposal/submit`,
+  REVIEW: (id: string) => `${BASE}/api/repositories/${id}/proposal/review`,
+};
 
-// ── Applications ──────────────────────────────────────────────────
 export const APPLICATIONS = {
-  LIST:   (projectId: string) => `${BASE}/api/projects/${projectId}/applications`,
-  REVIEW: (appId: string)     => `${BASE}/api/applications/${appId}`,
-} as const;
+  LIST:   (projectId: string) => `${BASE}/api/repositories/${projectId}/applications`,
+  CREATE: (projectId: string) => `${BASE}/api/repositories/${projectId}/applications`,
+  UPDATE: (id: string) => `${BASE}/api/applications/${id}`,
+};
 
 // ── Discovery ─────────────────────────────────────────────────────
 export const DISCOVERY = {
@@ -57,32 +59,37 @@ export const DISCOVERY = {
 
 // ── Tasks ─────────────────────────────────────────────────────────
 export const TASKS = {
-  LIST:   (projectId: string) => `${BASE}/api/projects/${projectId}/tasks`,
-  CREATE: (projectId: string) => `${BASE}/api/projects/${projectId}/tasks`,
-  STATUS: (taskId: string)    => `${BASE}/api/tasks/${taskId}/status`,
-} as const;
+  // Uses top-level tasks route for some ops, but project context for listing
+  LIST:   (projectId: string) => `${BASE}/api/repositories/${projectId}/tasks`,
+  CREATE: (projectId: string) => `${BASE}/api/repositories/${projectId}/tasks`,
+  UPDATE: (taskId: string) => `${BASE}/api/tasks/${taskId}`,
+  DELETE: (taskId: string) => `${BASE}/api/tasks/${taskId}`,
+};
 
 // ── Documents ─────────────────────────────────────────────────────
 export const DOCUMENTS = {
-  LIST:   (projectId: string)                    => `${BASE}/api/projects/${projectId}/documents`,
-  CREATE: (projectId: string)                    => `${BASE}/api/projects/${projectId}/documents`,
-  DETAIL: (documentId: string)                   => `${BASE}/api/documents/${documentId}`,
-  SAVE:   (documentId: string)                   => `${BASE}/api/documents/${documentId}`,
-} as const;
+  LIST:   (projectId: string)                    => `${BASE}/api/repositories/${projectId}/documents`,
+  CREATE: (projectId: string)                    => `${BASE}/api/repositories/${projectId}/documents`,
+  DETAIL: (docId: string)                        => `${BASE}/api/documents/${docId}`,
+  SAVE:   (docId: string)                        => `${BASE}/api/documents/${docId}`,
+  AI_DRAFT: (docId: string)                      => `${BASE}/api/ai/documents/${docId}/draft`,
+  AI_REVIEW: (docId: string)                     => `${BASE}/api/ai/documents/${docId}/review`,
+};
 
 // ── Surveys ───────────────────────────────────────────────────────
 export const SURVEYS = {
-  LIST:             (projectId: string) => `${BASE}/api/projects/${projectId}/surveys`,
-  CREATE:           (projectId: string) => `${BASE}/api/projects/${projectId}/surveys`,
+  LIST:             (projectId: string) => `${BASE}/api/repositories/${projectId}/surveys`,
+  CREATE:           (projectId: string) => `${BASE}/api/repositories/${projectId}/surveys`,
   DETAIL:           (surveyId: string)  => `${BASE}/api/surveys/${surveyId}`,
-  SUBMIT_RESPONSE:  (surveyId: string)  => `${BASE}/api/surveys/${surveyId}/responses`,
-  GET_RESPONSES:    (surveyId: string)  => `${BASE}/api/surveys/${surveyId}/responses`,
-} as const;
+  RECORD_RESPONSE:  (surveyId: string)  => `${BASE}/api/surveys/${surveyId}/responses`,
+  // Next-gen: generate full survey from text
+  AI_GENERATE:      `${BASE}/api/ai/surveys/generate`,
+};
 
 // ── Outputs ───────────────────────────────────────────────────────
 export const OUTPUTS = {
-  LIST:   (projectId: string) => `${BASE}/api/projects/${projectId}/outputs`,
-  CREATE: (projectId: string) => `${BASE}/api/projects/${projectId}/outputs`,
+  LIST:   (projectId: string) => `${BASE}/api/repositories/${projectId}/outputs`,
+  CREATE: (projectId: string) => `${BASE}/api/repositories/${projectId}/outputs`,
 } as const;
 
 // ── File Upload ───────────────────────────────────────────────────

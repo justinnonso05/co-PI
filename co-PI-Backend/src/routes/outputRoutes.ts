@@ -48,7 +48,7 @@ const router = Router();
  *       201:
  *         description: Output logged successfully.
  */
-router.post('/projects/:id/outputs', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR']), OutputController.createOutput);
+router.post('/repositories/:id/outputs', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR']), OutputController.createOutput);
 
 /**
  * @swagger
@@ -68,6 +68,6 @@ router.post('/projects/:id/outputs', authenticateJWT, requireRole(['PI', 'CO_INV
  *       200:
  *         description: A list of research outputs.
  */
-router.get('/projects/:id/outputs', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR', 'ASSISTANT', 'REVIEWER']), OutputController.getOutputs);
+router.get('/repositories/:id/outputs', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR', 'ASSISTANT', 'REVIEWER']), OutputController.getOutputs);
 
 export default router;

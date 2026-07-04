@@ -89,7 +89,7 @@ export default function AllProjectsPage() {
             const role = myMember ? ROLE_LABELS[myMember.role] || myMember.role : 'Member';
             
             return (
-              <Link key={p.id} href={`/projects/${p.id}`} className="proj-card">
+              <Link key={p.id} href={`/repositories/${p.id}`} className="proj-card">
                 <div className="proj-card-meta">
                   <span className={`proj-badge ${STATUS_META[p.status]?.cls}`}>
                     {STATUS_META[p.status]?.label}

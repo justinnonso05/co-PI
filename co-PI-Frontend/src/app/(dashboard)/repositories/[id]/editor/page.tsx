@@ -37,6 +37,9 @@ export default function CollaborativeEditorPage() {
   const [submitting, setSubmitting] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ id: string, firstName: string, lastName: string } | null>(null);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const aiSuggestionRef = useRef<{ index: number, length: number } | null>(null);
+  const [hasActiveSuggestion, setHasActiveSuggestion] = useState(false);
 
   // Load user
   useEffect(() => {
@@ -153,9 +156,50 @@ export default function CollaborativeEditorPage() {
         if (source === 'user') {
           socket.emit('send-changes', documentId, delta);
           debouncedSave();
+
+          // @coPI trigger
+          const text = quill.getText();
+          const cursorIndex = quill.getSelection()?.index || 0;
+          const lastLineStr = text.substring(0, cursorIndex).split('\n').pop() || '';
+          if (lastLineStr.startsWith('@coPI ') && lastLineStr.endsWith('...')) {
+            const prompt = lastLineStr.replace('@coPI ', '').replace('...', '').trim();
+            if (prompt) {
+              setIsStreaming(true);
+              const promptIndex = cursorIndex - lastLineStr.length;
+              quill.deleteText(promptIndex, lastLineStr.length);
+              
+              // Prepare tracking for the AI suggestion
+              aiSuggestionRef.current = { index: promptIndex, length: 0 };
+              setHasActiveSuggestion(false);
+
+              socket.emit('copi-draft', documentId, { prompt, repositoryId: projectId });
+            }
+          }
         }
       };
       quill.on('text-change', handleTextChange);
+
+      // AI Stream Listeners
+      const handleStreamChunk = (data: { documentId: string, chunk: string }) => {
+        if (data.documentId === documentId && quillRef.current && aiSuggestionRef.current) {
+          const q = quillRef.current;
+          const { index, length } = aiSuggestionRef.current;
+          q.insertText(index + length, data.chunk, { color: '#2A7C75', background: '#f0fdfa' });
+          aiSuggestionRef.current.length += data.chunk.length;
+        }
+      };
+      const handleStreamEnd = () => {
+        setIsStreaming(false);
+        setHasActiveSuggestion(true);
+      };
+      const handleStreamError = () => {
+        setIsStreaming(false);
+        setHasActiveSuggestion(true);
+      };
+
+      socket.on('copi-stream-chunk', handleStreamChunk);
+      socket.on('copi-stream-end', handleStreamEnd);
+      socket.on('copi-stream-error', handleStreamError);
 
       // 5. Handle cursor sync
       const handleSelectionChange = (range: any, oldRange: any, source: string) => {
@@ -195,6 +239,9 @@ export default function CollaborativeEditorPage() {
         socket.off('receive-changes', handleReceiveChanges);
         socket.off('cursor-update', handleCursorUpdate);
         socket.off('user-left', handleUserLeft);
+        socket.off('copi-stream-chunk', handleStreamChunk);
+        socket.off('copi-stream-end', handleStreamEnd);
+        socket.off('copi-stream-error', handleStreamError);
         socket.emit('leave-document', documentId, currentUser!.id);
         socket.disconnect();
       };
@@ -229,6 +276,22 @@ export default function CollaborativeEditorPage() {
     }, 2000);
   };
 
+  const acceptAiSuggestion = () => {
+    if (quillRef.current && aiSuggestionRef.current) {
+      quillRef.current.formatText(aiSuggestionRef.current.index, aiSuggestionRef.current.length, { color: false, background: false });
+    }
+    aiSuggestionRef.current = null;
+    setHasActiveSuggestion(false);
+  };
+
+  const rejectAiSuggestion = () => {
+    if (quillRef.current && aiSuggestionRef.current) {
+      quillRef.current.deleteText(aiSuggestionRef.current.index, aiSuggestionRef.current.length);
+    }
+    aiSuggestionRef.current = null;
+    setHasActiveSuggestion(false);
+  };
+
   const exportToDoc = () => {
     if (!quillRef.current || !doc) return;
     const htmlContent = quillRef.current.root.innerHTML;
@@ -256,7 +319,7 @@ export default function CollaborativeEditorPage() {
     try {
       await apiFetch(PROPOSAL.SUBMIT(projectId as string), { method: 'POST' });
       // Redirect back to project dashboard after submission
-      router.push(`/projects/${projectId}`);
+      router.push(`/repositories/${projectId}`);
     } catch (err: any) {
       setError(err.message || 'Failed to submit proposal.');
       setSubmitting(false);
@@ -273,14 +336,14 @@ export default function CollaborativeEditorPage() {
       {!isFullScreen && (
         <header className="editor-header">
           <div className="editor-header-left">
-            <Link href={`/projects/${projectId}`} className="dash-btn-ghost editor-back-btn">
+            <Link href={`/repositories/${projectId}`} className="dash-btn-ghost editor-back-btn">
               ← Back
             </Link>
             <h1 className="proj-title editor-title">{doc?.title}</h1>
           </div>
           <div className="editor-header-right">
             <div className="editor-save-status">
-              {saving ? 'Saving...' : 'Saved'}
+              {isStreaming ? <span style={{ color: '#2A7C75', fontWeight: 600, animation: 'pulse 2s infinite' }}>@coPI is typing...</span> : (saving ? 'Saving...' : 'Saved')}
             </div>
             <button onClick={() => setShowHints(true)} className="dash-btn-ghost" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
               💡 {doc?.title?.toLowerCase().includes('literature') ? 'Literature Review Guide' : doc?.title?.toLowerCase().includes('qualitative') || doc?.title?.toLowerCase().includes('data') ? 'Data Collection Guide' : doc?.title?.toLowerCase().includes('report') ? 'Report Writing Guide' : 'Proposal Guidelines'}
@@ -352,6 +415,33 @@ export default function CollaborativeEditorPage() {
         }}>
           <div ref={editorRef} style={{ flex: 1, minHeight: isFullScreen ? '100vh' : '600px', border: 'none', display: 'flex', flexDirection: 'column' }} />
         </div>
+
+        {/* AI Suggestion Actions */}
+        {hasActiveSuggestion && (
+          <div style={{ 
+            position: 'absolute', 
+            bottom: '2rem', 
+            left: '50%', 
+            transform: 'translateX(-50%)', 
+            background: 'var(--paper)', 
+            padding: '1rem 1.5rem', 
+            borderRadius: '12px', 
+            boxShadow: '0 8px 32px rgba(42,124,117,0.2)', 
+            border: '1px solid rgba(42,124,117,0.3)',
+            zIndex: 1000, 
+            display: 'flex', 
+            gap: '1.5rem', 
+            alignItems: 'center' 
+          }}>
+            <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#2A7C75', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              ✨ AI Suggestion Ready
+            </span>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button onClick={rejectAiSuggestion} className="dash-btn-ghost" style={{ padding: '0.4rem 1rem', color: 'var(--error)' }}>Discard</button>
+              <button onClick={acceptAiSuggestion} className="dash-btn-primary" style={{ padding: '0.4rem 1rem', background: '#2A7C75' }}>Insert</button>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Hints Modal */}

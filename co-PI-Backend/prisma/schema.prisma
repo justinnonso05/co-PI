@@ -14,9 +14,6 @@ model User {
   passwordHash String
   firstName    String
   lastName     String
-  university   String?
-  faculty      String?
-  department   String?
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -28,6 +25,8 @@ model User {
 
   initiatedActivities Activity[] @relation("ActivityInitiator")
   targetedActivities  Activity[] @relation("ActivityTarget")
+
+  aiInteractions      AiInteraction[]
 }
 
 model Project {
@@ -36,7 +35,6 @@ model Project {
   researchTopic          String?
   description            String
   visibility             String        @default("PUBLIC")
-  university             String?
   status                 String        @default("DRAFT")
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
@@ -49,6 +47,9 @@ model Project {
   surveys      Survey[]
   outputs      ResearchOutput[]
   activities   Activity[]
+
+  aiFacts        AiFact[]
+  aiInteractions AiInteraction[]
 }
 
 model ProjectMember {
@@ -115,6 +116,8 @@ model Document {
   updatedAt      DateTime @updatedAt
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  datasetReviews DatasetReview[]
+  paperDigests   PaperDigest[]
 }
 
 model Survey {
@@ -165,4 +168,50 @@ model Activity {
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   initiator User?   @relation("ActivityInitiator", fields: [initiatorId], references: [id], onDelete: SetNull)
   target    User?   @relation("ActivityTarget", fields: [targetId], references: [id], onDelete: SetNull)
+}
+
+// ----------------------------------------------------
+// New Models for Hackathon AI Integration
+// ----------------------------------------------------
+
+model AiFact {
+  id           String   @id @default(uuid())
+  repositoryId String
+  content      String
+  sourceType   String   // (proposal|dataset|paper|chat)
+  createdAt    DateTime @default(now())
+
+  project      Project  @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+}
+
+model AiInteraction {
+  id           String   @id @default(uuid())
+  repositoryId String
+  userId       String?
+  prompt       String
+  response     String
+  endpoint     String
+  createdAt    DateTime @default(now())
+
+  project      Project  @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model DatasetReview {
+  id           String   @id @default(uuid())
+  documentId   String
+  findings     Json
+  createdAt    DateTime @default(now())
+
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+model PaperDigest {
+  id           String   @id @default(uuid())
+  documentId   String
+  summary      String
+  gaps         Json
+  createdAt    DateTime @default(now())
+
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 }

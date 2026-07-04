@@ -14,7 +14,7 @@ interface User {
 
 const NAV = [
   { href: '/dashboard',  label: 'Dashboard',  icon: '◈' },
-  { href: '/projects',   label: 'All Projects',icon: '▤' },
+  { href: '/repositories',   label: 'All Repositories',icon: '▤' },
   { href: '/profile',    label: 'Profile',    icon: '◎' },
 ];
 

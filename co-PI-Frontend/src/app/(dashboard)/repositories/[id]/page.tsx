@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { apiFetch, getUser, getToken } from '@/lib/api';
 import { PROJECTS, TASKS, DOCUMENTS, SURVEYS, OUTPUTS, UPLOAD, PROPOSAL, APPLICATIONS } from '@/lib/endpoints';
 import { Trash2, Lock, Globe } from 'lucide-react';
-import '../../../project-mobile.css';
+import '@/project-mobile.css';
 import { getSocket } from '@/lib/socket';
 import UserSearchInput from '@/components/dashboard/UserSearchInput';
 
@@ -414,7 +414,7 @@ export default function ProjectPage() {
           body: JSON.stringify({ status: newStatus }),
         });
         setProject(d.project);
-        router.push(`/projects/${id}/editor?doc=${dDoc.document.id}`);
+        router.push(`/repositories/${id}/editor?doc=${dDoc.document.id}`);
         return;
       }
 
@@ -525,7 +525,7 @@ export default function ProjectPage() {
         body: JSON.stringify({ title: 'Research Proposal' }),
       });
       broadcastActivity('DOC_CREATED', 'Research Proposal document created', undefined, { docTitle: 'Research Proposal', initiatorName: currentUser?.firstName });
-      router.push(`/projects/${id}/editor?doc=${d.document.id}`);
+      router.push(`/repositories/${id}/editor?doc=${d.document.id}`);
     } catch (e: any) { setAlertMessage(e.message || 'Failed to create proposal document.'); }
     finally { setProposalSaving(false); }
   }
@@ -652,7 +652,7 @@ export default function ProjectPage() {
       });
       setDocuments(prev => [d.document, ...prev]);
       broadcastActivity('DOC_CREATED', `Document "${d.document.title}" was created`, undefined, { docTitle: d.document.title, initiatorName: currentUser?.firstName });
-      router.push(`/projects/${id}/editor?doc=${d.document.id}`);
+      router.push(`/repositories/${id}/editor?doc=${d.document.id}`);
     } catch (e: unknown) { setDocErr(e instanceof Error ? e.message : 'Failed.'); }
     finally { setSavingDoc(false); }
   }
@@ -804,14 +804,14 @@ export default function ProjectPage() {
         canEditStatus={canEditStatus} 
         onAdvanceStatus={(nextStatus) => handleUpdateStatus(nextStatus)} 
         myRole={myRole}
-        onBuildSurvey={() => router.push(`/projects/${id}/surveys`)}
+        onBuildSurvey={() => router.push(`/repositories/${id}/surveys`)}
         onDocumentQualitative={async () => {
           try {
             const dDoc = await apiFetch<{ document: any }>(DOCUMENTS.CREATE(id), {
               method: 'POST',
               body: JSON.stringify({ title: 'Qualitative Data' }),
             });
-            router.push(`/projects/${id}/editor?doc=${dDoc.document.id}`);
+            router.push(`/repositories/${id}/editor?doc=${dDoc.document.id}`);
           } catch (e: any) { setAlertMessage(e.message || 'Failed to create document'); }
         }}
         onRequestConfirm={(msg, onConfirm) => setConfirmState({ message: msg, onConfirm })}
@@ -822,7 +822,7 @@ export default function ProjectPage() {
               method: 'POST',
               body: JSON.stringify({ title: 'Final Report' }),
             });
-            router.push(`/projects/${id}/editor?doc=${dDoc.document.id}`);
+            router.push(`/repositories/${id}/editor?doc=${dDoc.document.id}`);
           } catch (e: any) { setAlertMessage(e.message || 'Failed to create document'); }
         }}
         onUploadReport={() => {
@@ -932,7 +932,7 @@ export default function ProjectPage() {
                       <p className="proj-card-title" style={{ fontSize: '0.9rem' }}>{doc.title}</p>
                       <p className="proj-ethics" style={{ marginTop: '0.1rem' }}>Last edited {formatDateTime(doc.updatedAt)}</p>
                     </div>
-                    <a href={`/projects/${id}/editor?doc=${doc.id}`} className="dash-btn-primary" style={{ textDecoration: 'none', whiteSpace: 'nowrap' }}>Open →</a>
+                    <a href={`/repositories/${id}/editor?doc=${doc.id}`} className="dash-btn-primary" style={{ textDecoration: 'none', whiteSpace: 'nowrap' }}>Open →</a>
                   </div>
                 ))}
                 {canWrite && project.proposal?.status !== 'SUBMITTED' && project.proposal?.status !== 'APPROVED' && !documents.some(d => d.title.toLowerCase().includes('proposal')) && (
@@ -1055,7 +1055,7 @@ export default function ProjectPage() {
                       <span className="doc-item-meta">Last edited {formatDateTime(doc.updatedAt)}</span>
                     </div>
                     <Link
-                      href={`/projects/${id}/editor?doc=${doc.id}`}
+                      href={`/repositories/${id}/editor?doc=${doc.id}`}
                       className="dash-btn-ghost doc-open-btn"
                     >
                       Open →
@@ -1077,7 +1077,7 @@ export default function ProjectPage() {
                   onClick={() => {
                     const allowedStages = ['DATA_COLLECTION', 'DATA_ANALYSIS', 'REPORT_WRITING', 'FINAL_SUBMISSION', 'CERTIFICATION', 'COMPLETED'];
                     if (allowedStages.includes(project.status)) {
-                      router.push(`/projects/${id}/surveys`);
+                      router.push(`/repositories/${id}/surveys`);
                     } else {
                       setAlertMessage('Your project must reach the DATA COLLECTION stage before you can build surveys.');
                     }
@@ -1100,7 +1100,7 @@ export default function ProjectPage() {
                         {s.isActive ? '● Active' : '○ Inactive'} · Created {formatDate(s.createdAt)}
                       </span>
                     </div>
-                    <Link href={`/projects/${id}/surveys?survey=${s.id}`} className="dash-btn-ghost doc-open-btn">
+                    <Link href={`/repositories/${id}/surveys?survey=${s.id}`} className="dash-btn-ghost doc-open-btn">
                       View →
                     </Link>
                   </li>

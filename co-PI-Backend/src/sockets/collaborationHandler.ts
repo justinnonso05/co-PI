@@ -37,6 +37,38 @@ export const setupCollaborationSockets = (serverIo: Server) => {
       socket.to(documentId).emit('cursor-update', cursorData);
     });
 
+    // Handle @coPI mentions for streaming drafting
+    socket.on('copi-draft', async (documentId: string, payload: { prompt: string, repositoryId: string }) => {
+      try {
+        const { BtlRuntimeService } = require('../services/btlRuntime.service');
+        const stream = BtlRuntimeService.createChatCompletionStream({
+          repositoryId: payload.repositoryId,
+          messages: [
+            { role: 'system', content: 'You are an AI co-PI. Draft or edit the proposal section based on the user prompt.' },
+            { role: 'user', content: payload.prompt }
+          ]
+        });
+
+        for await (const chunk of stream) {
+          // Send each chunk back to the client that requested it (and optionally broadcast)
+          socket.emit('copi-stream-chunk', { documentId, chunk });
+          socket.to(documentId).emit('copi-stream-chunk', { documentId, chunk });
+        }
+        
+        // Notify that stream is finished
+        socket.emit('copi-stream-end', { documentId });
+        socket.to(documentId).emit('copi-stream-end', { documentId });
+        
+        // Asynchronously save this interaction to Memory
+        const { AiController } = require('../controllers/ai.controller');
+        // A hack to save the interaction fact
+        // AiController.extractAndSaveFact(...) could be called here if we collected the full text
+      } catch (err: any) {
+        console.error('Error during @coPI stream:', err);
+        socket.emit('copi-stream-error', { documentId, error: err.message });
+      }
+    });
+
     // ------------------------------------------------------------------------
     // Project Dashboard & Activity Feed Events (per PRD)
     // ------------------------------------------------------------------------

@@ -112,7 +112,7 @@ export default function SurveyPage() {
           schemaJson: { questions }
         })
       });
-      router.push(`/projects/${projectId}`);
+      router.push(`/repositories/${projectId}`);
     } catch (e: any) {
       setError(e.message || 'Failed to save survey.');
       setSaving(false);
@@ -168,7 +168,7 @@ export default function SurveyPage() {
   return (
     <div className="dash-shell">
       <main className="dash-main survey-main-container">
-        <Link href={`/projects/${projectId}`} className="dash-btn-ghost" style={{ marginBottom: '1rem', display: 'inline-block' }}>
+        <Link href={`/repositories/${projectId}`} className="dash-btn-ghost" style={{ marginBottom: '1rem', display: 'inline-block' }}>
           ← Back to Project
         </Link>
 
@@ -194,7 +194,7 @@ export default function SurveyPage() {
                           method: 'PATCH',
                           body: JSON.stringify({ status: 'DATA_ANALYSIS' })
                         });
-                        router.push(`/projects/${projectId}`);
+                        router.push(`/repositories/${projectId}`);
                       } catch (e: any) { alert(e.message || 'Failed to update status'); }
                     }
                   }}
