@@ -57,7 +57,7 @@ const router = Router();
  *       403:
  *         description: Forbidden. Only PIs and Co-Investigators can create tasks.
  */
-router.post('/projects/:id/tasks', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR']), TaskController.createTask);
+router.post('/repositories/:id/tasks', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR']), TaskController.createTask);
 
 /**
  * @swagger
@@ -82,7 +82,7 @@ router.post('/projects/:id/tasks', authenticateJWT, requireRole(['PI', 'CO_INVES
  *       403:
  *         description: Forbidden. You are not a member of this project.
  */
-router.get('/projects/:id/tasks', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR', 'ASSISTANT', 'REVIEWER']), TaskController.getTasks);
+router.get('/repositories/:id/tasks', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR', 'ASSISTANT', 'REVIEWER']), TaskController.getTasks);
 
 /**
  * @swagger

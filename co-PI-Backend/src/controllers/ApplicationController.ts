@@ -19,7 +19,7 @@ export class ApplicationController {
         where: { projectId, status: 'PENDING' },
         include: {
           user: {
-            select: { id: true, firstName: true, lastName: true, email: true, faculty: true, university: true },
+            select: { id: true, firstName: true, lastName: true, email: true },
           },
         },
         orderBy: { createdAt: 'asc' },

@@ -7,19 +7,13 @@ export class ProjectService {
    * Creates a new project and automatically assigns the creator as the Principal Investigator (PI).
    */
   static async createProject(userId: string, title: string, description: string, researchTopic: string): Promise<Project> {
-    // Inherit the PI's university so discovery scoping works
-    const creator = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { university: true },
-    });
-
     const project = await prisma.project.create({
       data: {
         title,
         description,
         researchTopic,
-        university: creator?.university ?? null,
-        visibility: 'PUBLIC',          // default public so discovery works
+        visibility: 'PUBLIC',
+        status: 'DRAFT',
         members: {
           create: {
             userId,

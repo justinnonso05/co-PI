@@ -14,6 +14,7 @@ import outputRoutes from './routes/outputRoutes';
 import activityRoutes from './routes/activityRoutes';
 import discoveryRoutes from './routes/discoveryRoutes';
 import proposalRoutes from './routes/proposalRoutes';
+import aiRoutes from './routes/ai.routes';
 import { errorHandler } from './middlewares/errorHandler';
 import { setupCollaborationSockets } from './sockets/collaborationHandler';
 
@@ -44,8 +45,8 @@ app.get('/api', (req: Request, res: Response) => res.redirect('/api-docs/'));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api', userRoutes);
-app.use('/api/projects', projectRoutes);
-app.use('/api/projects', proposalRoutes);
+app.use('/api/repositories', projectRoutes);
+app.use('/api/repositories', proposalRoutes);
 app.use('/api', taskRoutes);
 app.use('/api', documentRoutes);
 app.use('/api', surveyRoutes);
@@ -54,6 +55,7 @@ app.use('/api', activityRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/discover', discoveryRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Basic health check route
 app.get('/api/ping', (req: Request, res: Response) => {

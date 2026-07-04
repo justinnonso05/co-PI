@@ -49,7 +49,7 @@ const router = Router();
  *       403:
  *         description: Forbidden.
  */
-router.post('/projects/:id/documents', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR', 'ASSISTANT']), DocumentController.createDocument);
+router.post('/repositories/:id/documents', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR', 'ASSISTANT']), DocumentController.createDocument);
 
 /**
  * @swagger
@@ -74,7 +74,7 @@ router.post('/projects/:id/documents', authenticateJWT, requireRole(['PI', 'CO_I
  *       403:
  *         description: Forbidden.
  */
-router.get('/projects/:id/documents', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR', 'ASSISTANT', 'REVIEWER']), DocumentController.getDocuments);
+router.get('/repositories/:id/documents', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR', 'ASSISTANT', 'REVIEWER']), DocumentController.getDocuments);
 
 /**
  * @swagger

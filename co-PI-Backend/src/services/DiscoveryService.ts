@@ -4,9 +4,9 @@ import { prisma } from '../db';
 export class DiscoveryService {
   /**
    * Unauthenticated search returning only aggregate counts.
-   * Does not expose PII or project details.
+   * Does not expose PII or repository details.
    */
-  static async searchPublicProjectsCount(keyword: string): Promise<number> {
+  static async searchPublicRepositoriesCount(keyword: string): Promise<number> {
     const count = await prisma.project.count({
       where: {
         visibility: 'PUBLIC',
@@ -20,14 +20,13 @@ export class DiscoveryService {
   }
 
   /**
-   * Authenticated search scoped strictly to the user's university.
-   * Returns limited project details.
+   * Authenticated search for discovering public repositories.
+   * Returns limited repository details.
    */
-  static async getUniversityProjects(university: string, userId: string): Promise<Partial<Project>[]> {
-    const projects = await prisma.project.findMany({
+  static async getPublicRepositories(userId: string): Promise<Partial<Project>[]> {
+    const repositories = await prisma.project.findMany({
       where: {
         visibility: 'PUBLIC',
-        university: university,
         status: { not: 'ARCHIVED' }
       },
       select: {
@@ -41,7 +40,7 @@ export class DiscoveryService {
           where: { role: 'PI' },
           select: {
             user: {
-              select: { firstName: true, lastName: true, faculty: true }
+              select: { firstName: true, lastName: true }
             }
           }
         },
@@ -50,30 +49,26 @@ export class DiscoveryService {
           select: { id: true, status: true, role: true }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      take: 20
     });
-    return projects;
+    return repositories;
   }
 
   /**
-   * Apply to collaborate on a project.
+   * Apply to collaborate on a repository.
    */
-  static async applyToProject(projectId: string, userId: string, role: string): Promise<ProjectApplication> {
-    // Ensure the project belongs to the user's university
+  static async applyToRepository(repositoryId: string, userId: string, role: string): Promise<ProjectApplication> {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    const project = await prisma.project.findUnique({ where: { id: projectId } });
+    const repository = await prisma.project.findUnique({ where: { id: repositoryId } });
 
-    if (!user || !project) {
+    if (!user || !repository) {
       throw { statusCode: 404, message: 'Not found' };
-    }
-
-    if (user.university !== project.university) {
-      throw { statusCode: 403, message: 'You can only apply to projects within your university.' };
     }
 
     const application = await prisma.projectApplication.create({
       data: {
-        projectId,
+        projectId: repositoryId,
         userId,
         role,
         status: 'PENDING'

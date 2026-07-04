@@ -44,7 +44,7 @@ const router = Router();
  *       201:
  *         description: Survey defined successfully.
  */
-router.post('/projects/:id/surveys', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR']), SurveyController.createSurvey);
+router.post('/repositories/:id/surveys', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR']), SurveyController.createSurvey);
 
 /**
  * @swagger
@@ -64,7 +64,7 @@ router.post('/projects/:id/surveys', authenticateJWT, requireRole(['PI', 'CO_INV
  *       200:
  *         description: A list of surveys.
  */
-router.get('/projects/:id/surveys', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR', 'ASSISTANT', 'REVIEWER']), SurveyController.getSurveys);
+router.get('/repositories/:id/surveys', authenticateJWT, requireRole(['PI', 'CO_INVESTIGATOR', 'ASSISTANT', 'REVIEWER']), SurveyController.getSurveys);
 
 /**
  * @swagger

@@ -170,7 +170,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (activeTab === 'DISCOVER') {
       setDiscoverLoading(true);
-      apiFetch<DiscoverProject[]>(DISCOVERY.UNIVERSITY)
+      apiFetch<DiscoverProject[]>(DISCOVERY.PUBLIC)
         .then(data => setDiscoverProjects(data))
         .catch(console.error)
         .finally(() => setDiscoverLoading(false));
@@ -252,7 +252,7 @@ export default function DashboardPage() {
         }),
       });
       // Navigate directly to the new project workspace
-      router.push(`/projects/${data.project.id}`);
+      router.push(`/repositories/${data.project.id}`);
     } catch (e: unknown) {
       setCreateError(e instanceof Error ? e.message : 'Could not create project.');
     } finally {
@@ -376,7 +376,7 @@ export default function DashboardPage() {
 
           <div className="dash-project-grid">
             {projects.map(p => (
-              <Link href={`/projects/${p.id}`} key={p.id} className="proj-card">
+              <Link href={`/repositories/${p.id}`} key={p.id} className="proj-card">
                 {/* Status + ethics row */}
                 <div className="proj-card-meta">
                   <span className={`proj-badge ${STATUS_META[p.status]?.cls}`}>
@@ -412,14 +412,14 @@ export default function DashboardPage() {
               {discoverLoading && (
                 <div className="dash-empty">
                   <span className="dash-empty-icon animate-spin">◌</span>
-                  <p>Discovering projects at your university…</p>
+                  <p>Discovering public projects…</p>
                 </div>
               )}
 
               {!discoverLoading && discoverProjects.length === 0 && (
                 <div className="dash-empty">
                   <span className="dash-empty-icon">◈</span>
-                  <p>No public projects found at your university yet.</p>
+                  <p>No public projects found yet.</p>
                 </div>
               )}
 
@@ -453,7 +453,7 @@ export default function DashboardPage() {
 
 
                         {projects.some(myProj => myProj.id === p.id) ? (
-                          <Link href={`/projects/${p.id}`} className="dash-btn-ghost" style={{ width: '100%', textAlign: 'center', background: 'rgba(42,124,117,0.05)', color: '#2A7C75', padding: '0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+                          <Link href={`/repositories/${p.id}`} className="dash-btn-ghost" style={{ width: '100%', textAlign: 'center', background: 'rgba(42,124,117,0.05)', color: '#2A7C75', padding: '0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
                             Open workspace →
                           </Link>
                         ) : p.applications && p.applications.length > 0 ? (

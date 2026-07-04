@@ -52,15 +52,15 @@ export class UserController {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-      const { firstName, lastName, university, faculty, department } = req.body;
+      const { firstName, lastName } = req.body;
       if (!firstName || !lastName) {
         return res.status(400).json({ error: 'Bad Request', message: 'First and last name are required.' });
       }
 
       const updatedUser = await prisma.user.update({
         where: { id: userId },
-        data: { firstName, lastName, university, faculty, department },
-        select: { id: true, email: true, firstName: true, lastName: true, university: true, faculty: true, department: true, isActive: true },
+        data: { firstName, lastName },
+        select: { id: true, email: true, firstName: true, lastName: true, isActive: true },
       });
 
       res.status(200).json({ message: 'Profile updated successfully', user: updatedUser });

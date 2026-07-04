@@ -1,14 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiFetch, setToken, setUser } from '@/lib/api';
 import { AUTH } from '@/lib/endpoints';
-import { SearchableDropdown } from '@/components/SearchableDropdown';
-
-import institutionsData from '@/data/institutions.json';
-import facultiesData from '@/data/faculties.json';
 
 interface RegisterResponse {
   message: string;
@@ -31,9 +27,6 @@ export default function RegisterPage() {
     email:     '',
     password:  '',
     confirm:   '',
-    university: '',
-    faculty:    '',
-    department: '',
   });
   const [error, setError]     = useState('');
   const [loading, setLoading] = useState(false);
@@ -47,8 +40,8 @@ export default function RegisterPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const { firstName, lastName, email, password, confirm, university, faculty, department } = form;
-    if (!firstName || !lastName || !email || !password || !university || !faculty || !department) {
+    const { firstName, lastName, email, password, confirm } = form;
+    if (!firstName || !lastName || !email || !password) {
       setError('Please fill in all required fields.');
       return;
     }
@@ -65,7 +58,7 @@ export default function RegisterPage() {
     try {
       const data = await apiFetch<RegisterResponse>(AUTH.REGISTER, {
         method: 'POST',
-        body: JSON.stringify({ firstName, lastName, email, password, university, faculty, department }),
+        body: JSON.stringify({ firstName, lastName, email, password }),
       });
       setToken(data.token);
       setUser(data.user);
@@ -141,39 +134,7 @@ export default function RegisterPage() {
             />
           </div>
 
-          {/* Tenancy fields */}
-          <SearchableDropdown
-            label="University / Institution"
-            options={institutionsData as { id: string | number; name: string }[]}
-            value={form.university}
-            onChange={(val) => setForm(prev => ({ ...prev, university: val, faculty: '', department: '' }))}
-            placeholder="Select institution"
-            disabled={loading}
-          />
 
-          <div className="auth-row">
-            <SearchableDropdown
-              label="Faculty"
-              options={facultiesData.faculties.map(f => ({ id: f.id, name: f.name }))}
-              value={form.faculty}
-              onChange={(val) => setForm(prev => ({ ...prev, faculty: val, department: '' }))}
-              placeholder="Select faculty"
-              disabled={loading || !form.university}
-            />
-
-            <SearchableDropdown
-              label="Department"
-              options={
-                form.faculty
-                  ? facultiesData.faculties.find(f => f.name === form.faculty)?.departments.map(d => ({ id: d.id, name: d.name })) || []
-                  : []
-              }
-              value={form.department}
-              onChange={(val) => setForm(prev => ({ ...prev, department: val }))}
-              placeholder="Select department"
-              disabled={loading || !form.faculty}
-            />
-          </div>
 
           {/* Password row */}
           <div className="auth-row">

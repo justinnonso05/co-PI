@@ -124,8 +124,8 @@ Two concrete, demoable moments to carry this:
 | **+14h → +22h** | Ship feature #4 (memory layer: `AiFact` extraction + retrieval). This is your differentiator — don't skip it for polish elsewhere. |
 | **Midpoint office hours** (Jul 4, 15:00 UTC) | Bring the memory layer demo specifically; ask BTL what "impressive runtime use" looks like to them. |
 | **+22h → +30h** | Ship feature #2 (dataset review) and #3 (literature digest) — both are variations on the same "upload → structured runtime call → post findings" pattern, so build them back-to-back. |
-| **+30h → +34h** *(only if #1–4 are fully working and demoable — see §3.4 guardrails)* | Stretch: feature #5, repository chat room with `@coPI`. Reuse the feature #1 streaming client and feature #4 `AiFact` retrieval as-is; the only new work is the chat UI and message persistence. |
-| **+34h → +38h** | Discovery feed polish, seed 4–5 realistic-looking public repositories so the platform doesn't look empty in the demo. |
+| **+30h → +33h** *(only if #1–4 are fully working and demoable — see §3.4 guardrails; skip straight to theme work otherwise)* | Stretch: feature #5, repository chat room with `@coPI`. Reuse the feature #1 streaming client and feature #4 `AiFact` retrieval as-is; the only new work is the chat UI and message persistence. |
+| **+33h → +38h** | Apply the Night Desk theme (§10) to the four target surfaces: landing/discovery feed, repository card, proposal editor chrome, AI streaming surface. Seed 4–5 realistic-looking public repositories in the same pass so the discovery feed doesn't look empty in the demo. Don't touch settings/auth/forms. |
 | **+38h → +44h** | Record 2-minute demo video, write submission description, double-check endpoint names are accurate. |
 | **+44h → 48h** | Buffer. Do not schedule real work here — assume something breaks. |
 
@@ -151,7 +151,43 @@ Meeting assistant, research/knowledge graph, collaboration matching, peer-review
 
 ---
 
+## 10. Visual design direction — "Night Desk"
+
+**Do you need to change the UI?** Yes, but not a full redesign — the current "parchment and ink" academic look actively undercuts the pivot from institutional CRMP to an open, GitHub-style research platform. But with the build hours already committed in §7, treat this as a **targeted re-skin of four surfaces**, not a rebuild: the landing/discovery feed, the repository card, the proposal editor chrome, and the AI streaming/chat surface. Everything else (settings, forms, auth) can stay on the existing component styling — judges see the demo path, not every screen.
+
+### The concept
+Not a generic dark-mode toggle. The reference point is a **research desk at 2am** — not the glow of a monitor, but the glow of the instruments and lamps on the desk itself: a gooseneck lamp over an index card, a patinated brass fitting, a corkboard with pinned evidence and thread connecting related notes. This keeps continuity with the existing "parchment and ink" identity (ink and paper are still present) while inverting it into something that reads as a working lab at night rather than a lecture hall by day. It also gives you a natural, literal way to visualize the memory layer from §5 — an `AiFact` pinned to a card with a thread line back to its source isn't just a metaphor, it's the actual UI for feature #4.
+
+Explicitly avoided: the near-black-plus-acid-green "AI tool" look, the warm-cream-plus-terracotta "AI landing page" look, and glow/blur/neon effects — all read as templated rather than considered.
+
+### Color tokens
+| Name | Hex | Role |
+|---|---|---|
+| Slate board | `#14181A` | Primary background — near-black with a cool blue-green undertone (blackboard, not tech-black) |
+| Corkboard | `#2B211A` | Secondary panel background — warm dark brown for cards, sidebars, code blocks |
+| Chalk | `#E8E3D8` | Primary text and pinned-note surfaces — warm off-white, legible against slate |
+| Brass glow | `#C98A3E` | Primary accent — human/analog actions: buttons, active states, your own edits |
+| Verdigris | `#5B8C7B` | Secondary accent — reserved specifically for co-PI/AI presence: streaming text, AI facts, the co-PI avatar. Keeping this distinct from brass lets color alone tell a user "did a person or the AI do this" |
+| Redline | `#B4483C` | Alerts and flagged issues only — the dataset-review "problem found" state, used sparingly |
+
+### Typography
+- **Display** (repository names, section headers): a slab serif with visible ink-trap detailing — something in the character of an old research report or proposal cover page. Set large, used sparingly.
+- **Body**: a warmed grotesque sans, not a clinical/neutral one — keeps long-form proposal reading comfortable against a dark background.
+- **Mono** (AI streaming text, code, dataset stats): an actual monospace, styled to evoke a teleprinter/typewriter rather than a modern code editor — this is where the streaming feature #1 physically performs the theme: text should feel like it's being typed onto the page, not rendered.
+
+### Layout concept — the corkboard
+The repository page is a corkboard, not a dashboard. The proposal is a pinned index card (see the mockup above: chalk-colored, slightly rotated, pinned). Each `AiFact` from the memory layer is a smaller card in verdigris, connected to its source with a thin dashed thread line — literally showing where co-PI's memory came from, which doubles as a transparency/trust device (the person can trace any AI claim back to its origin). Dataset review findings and paper digests use the same pinned-card language so the whole repository reads as one evidence board rather than a form-heavy CRUD app.
+
+### Signature element
+The **thread line** connecting an `AiFact` card to its source card is the one thing this page should be remembered by — it's cheap to build (a single SVG dashed line between two DOM positions), it's unique to this product, and it's not decorative: it visualizes the actual memory-retrieval mechanism from §5, so it's honest about what the AI is doing rather than just looking clever.
+
+### Motion — restraint
+Keep it to one deliberate moment: the streaming text in feature #1 typing on, character by character, like ink appearing under a pen. Don't add hover glows, card-lift shadows, or ambient animation elsewhere — those are exactly the tells that make a UI look AI-generated rather than designed.
+
+---
+
 ## Appendix A: Quick capability test guide (run this first, before any product code)
+
 
 Goal: resolve every "assumed, unverified" row in §3.2 in under 30 minutes, using `curl` so no app code is in the way. Get your key from the BTL dashboard and export it first:
 

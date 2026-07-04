@@ -37,6 +37,59 @@ export const setupCollaborationSockets = (serverIo: Server) => {
       socket.to(documentId).emit('cursor-update', cursorData);
     });
 
+    // Handle @coPI mentions for streaming drafting
+    socket.on('copi-draft', async (documentId: string, payload: { prompt: string, repositoryId: string }) => {
+      try {
+        const facts = await prisma.aiFact.findMany({
+          where: { repositoryId: payload.repositoryId },
+          orderBy: { createdAt: 'desc' },
+          take: 5
+        });
+        const factContext = facts.map((f: any) => `- ${f.content}`).join('\n');
+
+        let systemPrompt = 'You are an AI co-PI. Draft or edit the proposal section based on the user prompt.';
+        if (factContext) {
+          systemPrompt += `\n\nProject Context/Memory:\n${factContext}`;
+        }
+
+        const { BtlRuntimeService } = require('../services/btlRuntime.service');
+        const stream = BtlRuntimeService.createChatCompletionStream({
+          repositoryId: payload.repositoryId,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: payload.prompt }
+          ]
+        });
+
+        let fullResponse = '';
+        for await (const chunk of stream) {
+          fullResponse += chunk;
+          // Send each chunk back to the client that requested it (and optionally broadcast)
+          socket.emit('copi-stream-chunk', { documentId, chunk });
+          socket.to(documentId).emit('copi-stream-chunk', { documentId, chunk });
+        }
+        
+        // Notify that stream is finished
+        socket.emit('copi-stream-end', { documentId });
+        socket.to(documentId).emit('copi-stream-end', { documentId });
+        
+        // Asynchronously save this interaction to Memory
+        const { AiController } = require('../controllers/ai.controller');
+        AiController.extractAndSaveFact(
+          payload.repositoryId, 
+          [
+            { role: 'system', content: 'You are an AI co-PI. Draft or edit the proposal section based on the user prompt.' },
+            { role: 'user', content: payload.prompt }
+          ], 
+          fullResponse, 
+          'chat'
+        ).catch((err: any) => console.error('Failed to save AI fact in background:', err));
+      } catch (err: any) {
+        console.error('Error during @coPI stream:', err);
+        socket.emit('copi-stream-error', { documentId, error: err.message });
+      }
+    });
+
     // ------------------------------------------------------------------------
     // Project Dashboard & Activity Feed Events (per PRD)
     // ------------------------------------------------------------------------

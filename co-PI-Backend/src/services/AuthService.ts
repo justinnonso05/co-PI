@@ -8,7 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 const JWT_EXPIRY = '7d';
 
 export class AuthService {
-  static async registerUser(email: string, passwordHash: string, firstName: string, lastName: string, university?: string, faculty?: string, department?: string): Promise<{ user: Omit<User, 'passwordHash'>; token: string }> {
+  static async registerUser(email: string, passwordHash: string, firstName: string, lastName: string): Promise<{ user: Omit<User, 'passwordHash'>; token: string }> {
     const hashed = await bcrypt.hash(passwordHash, SALT_ROUNDS);
 
     const user = await prisma.user.create({
@@ -17,9 +17,6 @@ export class AuthService {
         passwordHash: hashed,
         firstName,
         lastName,
-        university,
-        faculty,
-        department,
       },
     });
 
