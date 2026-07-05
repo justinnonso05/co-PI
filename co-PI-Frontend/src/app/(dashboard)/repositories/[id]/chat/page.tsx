@@ -59,8 +59,22 @@ export default function RepositoryChatPage({ params }: { params: Promise<{ id: s
     socket.emit('join-chat', repositoryId, currentUser.id);
 
     // Socket Event Listeners
-    socket.on('receive-chat-message', (msg: ChatMessage) => {
-      setMessages(prev => [...prev, msg]);
+    socket.on('receive-chat-message', (msg: any) => {
+      setMessages(prev => {
+        // Find if we have an optimistic message to replace by EXACT tempId
+        if (msg.tempId) {
+          const tempIndex = prev.findIndex(m => m.id === msg.tempId);
+          if (tempIndex !== -1) {
+            const next = [...prev];
+            next[tempIndex] = msg;
+            return next;
+          }
+        }
+        // Fallback for messages from others or if tempId didn't match
+        // Prevent duplicate real messages just in case
+        if (prev.some(m => m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
     });
 
     socket.on('chat-copi-start', (msg: ChatMessage) => {
@@ -132,7 +146,7 @@ export default function RepositoryChatPage({ params }: { params: Promise<{ id: s
       socket.off('typing-stop');
       socket.off('user-status-changed');
     };
-  }, [repositoryId, currentUser]);
+  }, [repositoryId, currentUser?.id]);
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const isUserScrolling = useRef(false);
@@ -181,9 +195,23 @@ export default function RepositoryChatPage({ params }: { params: Promise<{ id: s
     if (!input.trim() || !currentUser) return;
 
     const socket = getSocket();
+    
+    // Optimistic UI Update
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg: ChatMessage = {
+      id: tempId,
+      content: input.trim(),
+      userId: currentUser.id,
+      isAiResponse: false,
+      createdAt: new Date().toISOString(),
+      user: currentUser,
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
+
     socket.emit('send-chat-message', repositoryId, {
       userId: currentUser.id,
       content: input.trim(),
+      tempId,
     });
 
     setInput('');

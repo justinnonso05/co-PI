@@ -38,7 +38,7 @@ export const setupCollaborationSockets = (serverIo: Server) => {
     });
 
     // Handle @coPI mentions for streaming drafting
-    socket.on('copi-draft', async (documentId: string, payload: { prompt: string, repositoryId: string }) => {
+    socket.on('copi-draft', async (documentId: string, payload: { prompt: string, repositoryId: string, contextBefore?: string, contextAfter?: string }) => {
       try {
         const facts = await prisma.aiFact.findMany({
           where: { repositoryId: payload.repositoryId },
@@ -47,10 +47,41 @@ export const setupCollaborationSockets = (serverIo: Server) => {
         });
         const factContext = facts.map((f: any) => `- ${f.content}`).join('\n');
 
-        let systemPrompt = 'You are an AI co-PI. Draft or edit the proposal section based on the user prompt.';
+        const project = await prisma.project.findUnique({
+          where: { id: payload.repositoryId },
+          include: { documents: { select: { title: true, content: true } } }
+        });
+
+        let systemPrompt = 'You are an AI co-PI. Draft or edit the document based on the user prompt.';
+        if (project) {
+          systemPrompt += `\n\nProject Context:\nTitle: ${project.title}\nTopic: ${project.researchTopic || 'N/A'}\nStage/Status: ${project.status}\nDescription: ${project.description}`;
+          if (project.documents && project.documents.length > 0) {
+            systemPrompt += `\n\nExisting Documents:`;
+            project.documents.forEach((doc: any) => {
+              let docText = '';
+              try {
+                 const delta = typeof doc.content === 'string' ? JSON.parse(doc.content) : doc.content;
+                 if (delta && delta.ops) {
+                   docText = delta.ops.map((op: any) => typeof op.insert === 'string' ? op.insert : '').join('').substring(0, 500);
+                 }
+              } catch (e) {}
+              if (docText) systemPrompt += `\n- ${doc.title}: ${docText.trim().replace(/\n/g, ' ')}...`;
+            });
+          }
+        }
+
         if (factContext) {
           systemPrompt += `\n\nProject Context/Memory:\n${factContext}`;
         }
+        
+        if (payload.contextBefore || payload.contextAfter) {
+          systemPrompt += `\n\n---\nDOCUMENT CONTEXT:\nYou are currently drafting text at the specific cursor location marked by [INSERT_HERE] in the active document. Here is the surrounding text:`;
+          systemPrompt += `\n...${payload.contextBefore || ''}[INSERT_HERE]${payload.contextAfter || ''}...`;
+          systemPrompt += `\n\nEnsure your drafted response flows seamlessly into this existing text. Do NOT repeat the existing text, just provide the exact new text to be inserted at [INSERT_HERE].`;
+        }
+        
+        // Ensure we bypass the hackathon proxy cache by making the prompt completely unique
+        systemPrompt += `\n\n[Internal ID: ${payload.repositoryId}-${Date.now()}]`;
 
         const { BtlRuntimeService } = require('../services/btlRuntime.service');
         const stream = BtlRuntimeService.createChatCompletionStream({
@@ -62,16 +93,18 @@ export const setupCollaborationSockets = (serverIo: Server) => {
         });
 
         let fullResponse = '';
-        for await (const chunk of stream) {
-          fullResponse += chunk;
-          // Send each chunk back to the client that requested it (and optionally broadcast)
-          socket.emit('copi-stream-chunk', { documentId, chunk });
-          socket.to(documentId).emit('copi-stream-chunk', { documentId, chunk });
+        try {
+          for await (const chunk of stream) {
+            fullResponse += chunk;
+            // Send each chunk back to the client that requested it (and optionally broadcast)
+            socket.emit('copi-stream-chunk', { documentId, chunk });
+            socket.to(documentId).emit('copi-stream-chunk', { documentId, chunk });
+          }
+        } finally {
+          // Notify that stream is finished, even if it crashes
+          socket.emit('copi-stream-end', { documentId });
+          socket.to(documentId).emit('copi-stream-end', { documentId });
         }
-        
-        // Notify that stream is finished
-        socket.emit('copi-stream-end', { documentId });
-        socket.to(documentId).emit('copi-stream-end', { documentId });
         
         // Asynchronously save this interaction to Memory
         const { AiController } = require('../controllers/ai.controller');
@@ -160,7 +193,7 @@ export const setupCollaborationSockets = (serverIo: Server) => {
       socket.to(`chat-${projectId}`).emit('typing-stop', { userId });
     });
 
-    socket.on('send-chat-message', async (projectId: string, payload: { userId: string, content: string }) => {
+    socket.on('send-chat-message', async (projectId: string, payload: { userId: string, content: string, tempId?: string }) => {
       try {
         // Save user message to DB
         const chatMsg = await prisma.chatMessage.create({
@@ -178,11 +211,11 @@ export const setupCollaborationSockets = (serverIo: Server) => {
         });
 
         // Broadcast user message
-        io.to(`chat-${projectId}`).emit('receive-chat-message', chatMsg);
+        io.to(`chat-${projectId}`).emit('receive-chat-message', { ...chatMsg, tempId: payload.tempId });
 
-        // Check if message mentions @copi (case insensitive)
-        if (payload.content.toLowerCase().startsWith('@copi')) {
-          const prompt = payload.content.replace(/^@copi\s*/i, '').trim() || 'Hello';
+        // Check if message mentions @copi (case insensitive) anywhere
+        if (payload.content.toLowerCase().includes('@copi')) {
+          const prompt = payload.content.replace(/@copi\s*/i, '').trim() || 'Hello';
           
           // Get last 10 messages for context
           const lastMessages = await prisma.chatMessage.findMany({
@@ -196,7 +229,15 @@ export const setupCollaborationSockets = (serverIo: Server) => {
             `${m.isAiResponse ? 'coPI' : m.user.firstName}: ${m.content}`
           ).join('\n');
 
-          const systemPrompt = `You are an AI co-PI in a real-time team chat. Reply to the user's prompt naturally. Here is the recent chat history:\n\n${historyContext}`;
+          const project = await prisma.project.findUnique({
+            where: { id: projectId }
+          });
+
+          let systemPrompt = `You are an AI co-PI in a real-time team chat. Reply to the user's prompt naturally.`;
+          if (project) {
+            systemPrompt += `\n\nProject Details:\nTitle: ${project.title}\nTopic: ${project.researchTopic || 'N/A'}\nStage/Status: ${project.status}\nDescription: ${project.description}`;
+          }
+          systemPrompt += `\n\nHere is the recent chat history:\n\n${historyContext}\n\n[Internal Context: ${projectId}-${Date.now()}]`;
 
           const { BtlRuntimeService } = require('../services/btlRuntime.service');
           const stream = BtlRuntimeService.createChatCompletionStream({
@@ -222,12 +263,14 @@ export const setupCollaborationSockets = (serverIo: Server) => {
           });
 
           let fullResponse = '';
-          for await (const chunk of stream) {
-            fullResponse += chunk;
-            io.to(`chat-${projectId}`).emit('chat-copi-chunk', { id: aiMsgId, chunk });
+          try {
+            for await (const chunk of stream) {
+              fullResponse += chunk;
+              io.to(`chat-${projectId}`).emit('chat-copi-chunk', { id: aiMsgId, chunk });
+            }
+          } finally {
+            io.to(`chat-${projectId}`).emit('chat-copi-end', { id: aiMsgId });
           }
-
-          io.to(`chat-${projectId}`).emit('chat-copi-end', { id: aiMsgId });
 
           // Save AI response to DB
           await prisma.chatMessage.create({

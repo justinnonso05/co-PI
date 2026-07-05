@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/api';
 export default function LiteratureDigest({ repositoryId, documentId, editorText, onInsert }: { repositoryId: string, documentId: string, editorText?: string, onInsert?: (text: string) => void }) {
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<{ digest: any } | null>(null);
+  const [results, setResults] = useState<{ digest?: any, customResponse?: string } | null>(null);
   const [error, setError] = useState('');
   const [mode, setMode] = useState<'upload' | 'editor'>('editor');
   const [customPrompt, setCustomPrompt] = useState('');
@@ -112,27 +112,38 @@ export default function LiteratureDigest({ repositoryId, documentId, editorText,
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div style={{ padding: '1rem', background: 'rgba(42,124,117,0.05)', borderRadius: '8px', borderLeft: '4px solid #2A7C75' }}>
-            <h4 style={{ margin: '0 0 0.5rem 0', color: '#2A7C75' }}>Synthesized Summary</h4>
-            <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: 1.6 }}>
-              {results.digest?.summary}
-            </p>
-          </div>
-          
-          <div>
-            <h4 style={{ margin: '0 0 0.75rem 0' }}>Identified Research Gaps</h4>
-            {results.digest?.gaps?.length > 0 ? (
-              <ul style={{ paddingLeft: '1.2rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {results.digest.gaps.map((gap: string, i: number) => (
-                  <li key={i} style={{ fontSize: '0.95rem', lineHeight: 1.5 }}>
-                    {gap}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p style={{ margin: 0, color: 'gray' }}>No obvious gaps identified.</p>
-            )}
-          </div>
+          {results.customResponse ? (
+            <div style={{ padding: '1rem', background: 'rgba(42,124,117,0.05)', borderRadius: '8px', borderLeft: '4px solid #2A7C75' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0', color: '#2A7C75' }}>AI Response</h4>
+              <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                {results.customResponse}
+              </p>
+            </div>
+          ) : (
+            <>
+              <div style={{ padding: '1rem', background: 'rgba(42,124,117,0.05)', borderRadius: '8px', borderLeft: '4px solid #2A7C75' }}>
+                <h4 style={{ margin: '0 0 0.5rem 0', color: '#2A7C75' }}>Synthesized Summary</h4>
+                <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: 1.6 }}>
+                  {results.digest?.summary}
+                </p>
+              </div>
+              
+              <div>
+                <h4 style={{ margin: '0 0 0.75rem 0' }}>Identified Research Gaps</h4>
+                {results.digest?.gaps?.length > 0 ? (
+                  <ul style={{ paddingLeft: '1.2rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {results.digest.gaps.map((gap: string, i: number) => (
+                      <li key={i} style={{ fontSize: '0.95rem', lineHeight: 1.5 }}>
+                        {gap}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p style={{ margin: 0, color: 'gray' }}>No obvious gaps identified.</p>
+                )}
+              </div>
+            </>
+          )}
           
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
             <button onClick={() => setResults(null)} className="dash-btn-ghost" style={{ alignSelf: 'flex-start' }}>
@@ -140,7 +151,9 @@ export default function LiteratureDigest({ repositoryId, documentId, editorText,
             </button>
             <button 
               onClick={() => {
-                const text = `Synthesized Summary:\n${results.digest?.summary}\n\nIdentified Research Gaps:\n${results.digest?.gaps?.map((g: string) => `- ${g}`).join('\n') || 'None'}`;
+                const text = results.customResponse 
+                  ? results.customResponse 
+                  : `Synthesized Summary:\n${results.digest?.summary}\n\nIdentified Research Gaps:\n${results.digest?.gaps?.map((g: string) => `- ${g}`).join('\n') || 'None'}`;
                 onInsert?.(text);
               }} 
               className="dash-btn-primary" 

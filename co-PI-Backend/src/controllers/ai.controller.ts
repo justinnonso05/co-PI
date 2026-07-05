@@ -135,9 +135,12 @@ ${JSON.stringify(dataSample, null, 2)}
         return;
       }
 
-      // 2. Ask BTL Runtime for digest
-      const systemInstruction = 'You are an expert research assistant. Read the provided papers and produce a short digest: return a JSON object containing "summary" (a one-line summary per paper as a string) and "gaps" (an array of 2-3 bullet points representing gaps or open questions across all of them).' +
-        (customPrompt ? `\n\nAdditional user instructions: ${customPrompt}` : '');
+      let systemInstruction = '';
+      if (customPrompt) {
+        systemInstruction = `You are an expert research assistant. Read the provided documents and answer the user's prompt directly in plain text: ${customPrompt}`;
+      } else {
+        systemInstruction = 'You are an expert research assistant. Read the provided papers and produce a short digest: return a JSON object containing "summary" (a one-line summary per paper as a string) and "gaps" (an array of 2-3 bullet points representing gaps or open questions across all of them).';
+      }
 
       const messages: BTLMessage[] = [
         {
@@ -154,8 +157,14 @@ ${JSON.stringify(dataSample, null, 2)}
         repositoryId,
         userId: (req as any).user?.userId,
         messages,
-        response_format: { type: 'json_object' }
+        ...(customPrompt ? {} : { response_format: { type: 'json_object' } })
       });
+
+      if (customPrompt) {
+        await AiController.extractAndSaveFact(repositoryId, messages, btlResponse.choices[0].message.content, 'paper');
+        res.status(200).json({ customResponse: btlResponse.choices[0].message.content });
+        return;
+      }
 
       const responseContent = JSON.parse(btlResponse.choices[0].message.content);
 
