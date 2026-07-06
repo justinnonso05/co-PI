@@ -70,6 +70,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
               key={href}
               href={href}
               className={`ds-nav-item ${pathname === href ? 'ds-nav-item--active' : ''}`}
+              onClick={() => setSideOpen(false)}
             >
               <span className="ds-nav-icon">{icon}</span>
               <span className="ds-nav-label">{label}</span>
@@ -85,6 +86,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
               <Link
                 href={`/repositories/${pathname.split('/')[2]}/chat`}
                 className={`ds-nav-item ${pathname.endsWith('/chat') ? 'ds-nav-item--active' : ''}`}
+                onClick={() => setSideOpen(false)}
               >
                 <span className="ds-nav-icon">💬</span>
                 <span className="ds-nav-label">Team Chat</span>

@@ -288,7 +288,7 @@ export default function RepositoryChatPage({ params }: { params: Promise<{ id: s
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#fff' }}>
       {/* Header Portal */}
       {headerPortal && createPortal(
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.5rem 0' }}>
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#111' }}>Team Chat</h2>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             {onlineList.length} online

@@ -430,7 +430,7 @@ export default function DashboardPage() {
                     }
                   }}
                   style={{
-                    flex: 1, padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)',
+                    flex: 1, minWidth: 0, padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)',
                     background: 'var(--paper)', fontSize: '0.9rem', outline: 'none'
                   }}
                 />

@@ -186,6 +186,7 @@ body:hover #rh-cursor-ring { opacity: 1; }
 }
 .hero-search-row input {
   flex: 1;
+  min-width: 0;
   border: none;
   border-bottom: 1.5px solid var(--teal-ink);
   background: transparent;
