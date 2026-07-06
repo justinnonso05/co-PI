@@ -53,7 +53,6 @@ co-PI rejects the generic "dark mode" or "acid-green AI tool" aesthetic. Instead
 - **Real-time:** Socket.IO (for live collaboration & AI streaming)
 - **Authentication:** JWT
 - **AI/LLM:** BTL Runtime API (OpenAI-compatible gateway)
-- **Infrastructure:** Docker
 
 ---
 

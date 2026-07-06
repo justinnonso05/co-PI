@@ -38,7 +38,7 @@ export const setupCollaborationSockets = (serverIo: Server) => {
     });
 
     // Handle @coPI mentions for streaming drafting
-    socket.on('copi-draft', async (documentId: string, payload: { prompt: string, repositoryId: string, contextBefore?: string, contextAfter?: string }) => {
+    socket.on('copi-draft', async (documentId: string, payload: { prompt: string, repositoryId: string, documentTitle?: string, contextBefore?: string, contextAfter?: string, mode?: string }) => {
       try {
         const facts = await prisma.aiFact.findMany({
           where: { repositoryId: payload.repositoryId },
@@ -75,9 +75,11 @@ export const setupCollaborationSockets = (serverIo: Server) => {
         }
         
         if (payload.contextBefore || payload.contextAfter) {
-          systemPrompt += `\n\n---\nDOCUMENT CONTEXT:\nYou are currently drafting text at the specific cursor location marked by [INSERT_HERE] in the active document. Here is the surrounding text:`;
+          systemPrompt += `\n\n---\nDOCUMENT CONTEXT:\nYou are currently drafting text at the specific cursor location marked by [INSERT_HERE] in the active document titled "${payload.documentTitle || 'Untitled'}". Here is the surrounding text:`;
           systemPrompt += `\n...${payload.contextBefore || ''}[INSERT_HERE]${payload.contextAfter || ''}...`;
           systemPrompt += `\n\nEnsure your drafted response flows seamlessly into this existing text. Do NOT repeat the existing text, just provide the exact new text to be inserted at [INSERT_HERE].`;
+        } else {
+          systemPrompt += `\n\n---\nDOCUMENT CONTEXT:\nYou are currently drafting text in the active document titled "${payload.documentTitle || 'Untitled'}". Provide exactly the text to be inserted.`;
         }
         
         // Ensure we bypass the hackathon proxy cache by making the prompt completely unique

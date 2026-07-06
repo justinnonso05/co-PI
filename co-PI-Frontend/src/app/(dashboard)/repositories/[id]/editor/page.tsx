@@ -429,6 +429,7 @@ export default function CollaborativeEditorPage() {
     socket.emit('copi-draft', documentId, { 
       prompt: finalPrompt, 
       repositoryId: projectId, 
+      documentTitle: doc?.title,
       contextBefore, 
       contextAfter 
     });
