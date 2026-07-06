@@ -417,7 +417,7 @@ export default function DashboardPage() {
           {/* DISCOVERY TAB CONTENT */}
           {activeTab === 'DISCOVER' && (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem', gap: '1rem' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1.5rem', gap: '1rem' }}>
                 <input 
                   type="text" 
                   placeholder="Search public projects by title, topic, or description..." 
@@ -493,7 +493,7 @@ export default function DashboardPage() {
                             Pending Request: {p.applications[0].role.replace('_', ' ')}
                           </div>
                         ) : (
-                          <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', width: '100%' }}>
                             <select
                               id={`role-${p.id}`}
                               className="auth-input auth-select"

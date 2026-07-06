@@ -1114,7 +1114,10 @@ footer {
 }
 
 /* ── Content ───────────────────────────────────────────────────── */
-.ds-content { flex: 1; padding: 2.5rem 2rem; }
+.ds-content { flex: 1; padding: 2.5rem 2rem; overflow-x: hidden; }
+@media (max-width: 900px) {
+  .ds-content { padding: 1.5rem 1rem; }
+}
 
 /* ══ DASHBOARD PAGE ════════════════════════════════════════════════ */
 
