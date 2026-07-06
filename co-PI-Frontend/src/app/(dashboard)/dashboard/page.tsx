@@ -122,6 +122,10 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab]     = useState<'MY_PROJECTS' | 'DISCOVER'>('MY_PROJECTS');
   const [discoverProjects, setDiscoverProjects] = useState<DiscoverProject[]>([]);
   const [discoverLoading, setDiscoverLoading] = useState(false);
+  const [discoverPage, setDiscoverPage] = useState(1);
+  const [discoverTotalPages, setDiscoverTotalPages] = useState(1);
+  const [discoverSearch, setDiscoverSearch] = useState('');
+  const [discoverSearchInput, setDiscoverSearchInput] = useState('');
   const [applyingTo, setApplyingTo]   = useState<string | null>(null);
   const [appMessage, setAppMessage]   = useState<{ title: string; desc: string; type: 'success' | 'error' } | null>(null);
 
@@ -170,12 +174,16 @@ export default function DashboardPage() {
   useEffect(() => {
     if (activeTab === 'DISCOVER') {
       setDiscoverLoading(true);
-      apiFetch<DiscoverProject[]>(DISCOVERY.PUBLIC)
-        .then(data => setDiscoverProjects(data))
+      const url = `${DISCOVERY.PUBLIC}?page=${discoverPage}&limit=40&search=${encodeURIComponent(discoverSearch)}`;
+      apiFetch<{ data: DiscoverProject[], totalPages: number }>(url)
+        .then(res => {
+          setDiscoverProjects(res.data);
+          setDiscoverTotalPages(res.totalPages || 1);
+        })
         .catch(console.error)
         .finally(() => setDiscoverLoading(false));
     }
-  }, [activeTab]);
+  }, [activeTab, discoverPage, discoverSearch]);
 
   /* ── Fetch recent activities ── */
   useEffect(() => {
@@ -409,6 +417,30 @@ export default function DashboardPage() {
           {/* DISCOVERY TAB CONTENT */}
           {activeTab === 'DISCOVER' && (
             <>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem', gap: '1rem' }}>
+                <input 
+                  type="text" 
+                  placeholder="Search public projects by title, topic, or description..." 
+                  value={discoverSearchInput}
+                  onChange={(e) => setDiscoverSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setDiscoverPage(1);
+                      setDiscoverSearch(discoverSearchInput);
+                    }
+                  }}
+                  style={{
+                    flex: 1, padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)',
+                    background: 'var(--paper)', fontSize: '0.9rem', outline: 'none'
+                  }}
+                />
+                <button 
+                  onClick={() => { setDiscoverPage(1); setDiscoverSearch(discoverSearchInput); }}
+                  className="dash-btn-primary"
+                >
+                  Search
+                </button>
+              </div>
               {discoverLoading && (
                 <div className="dash-empty">
                   <span className="dash-empty-icon animate-spin">◌</span>
@@ -488,6 +520,26 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {!discoverLoading && discoverTotalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '2rem' }}>
+                  <button 
+                    disabled={discoverPage === 1}
+                    onClick={() => setDiscoverPage(prev => Math.max(1, prev - 1))}
+                    className="dash-btn-ghost"
+                  >
+                    Previous
+                  </button>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Page {discoverPage} of {discoverTotalPages}</span>
+                  <button 
+                    disabled={discoverPage === discoverTotalPages}
+                    onClick={() => setDiscoverPage(prev => Math.min(discoverTotalPages, prev + 1))}
+                    className="dash-btn-ghost"
+                  >
+                    Next
+                  </button>
                 </div>
               )}
             </>

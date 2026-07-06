@@ -20,39 +20,68 @@ export class DiscoveryService {
   }
 
   /**
-   * Authenticated search for discovering public repositories.
-   * Returns limited repository details.
+   * Authenticated or Unauthenticated search for discovering public repositories.
+   * Returns paginated repository details.
    */
-  static async getPublicRepositories(userId: string): Promise<Partial<Project>[]> {
-    const repositories = await prisma.project.findMany({
-      where: {
-        visibility: 'PUBLIC',
-        status: { not: 'ARCHIVED' }
-      },
-      select: {
-        id: true,
-        title: true,
-        researchTopic: true,
-        description: true,
-        status: true,
-        createdAt: true,
-        members: {
-          where: { role: 'PI' },
-          select: {
-            user: {
-              select: { firstName: true, lastName: true }
+  static async getPublicRepositories(
+    userId: string | null,
+    page: number = 1,
+    limit: number = 40,
+    search: string = ''
+  ): Promise<{ data: Partial<Project>[], total: number, page: number, totalPages: number }> {
+    const whereClause: any = {
+      visibility: 'PUBLIC',
+      status: { not: 'ARCHIVED' }
+    };
+
+    if (search) {
+      whereClause.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { researchTopic: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [total, repositories] = await Promise.all([
+      prisma.project.count({ where: whereClause }),
+      prisma.project.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          title: true,
+          researchTopic: true,
+          description: true,
+          status: true,
+          createdAt: true,
+          members: {
+            where: { role: 'PI' },
+            select: {
+              user: {
+                select: { firstName: true, lastName: true }
+              }
             }
-          }
+          },
+          ...(userId ? {
+            applications: {
+              where: { userId, status: 'PENDING' },
+              select: { id: true, status: true, role: true }
+            }
+          } : {})
         },
-        applications: {
-          where: { userId, status: 'PENDING' },
-          select: { id: true, status: true, role: true }
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 20
-    });
-    return repositories;
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit
+      })
+    ]);
+
+    return {
+      data: repositories,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    };
   }
 
   /**

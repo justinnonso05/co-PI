@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import type QuillType from 'quill';
 import type QuillCursorsType from 'quill-cursors';
@@ -29,25 +30,42 @@ export default function CollaborativeEditorPage() {
   const editorRef = useRef<HTMLDivElement>(null);
   const quillRef = useRef<QuillType | null>(null);
   const cursorsRef = useRef<QuillCursorsType | null>(null);
+  const socketRef = useRef<any>(null);
+  const aiSuggestionRef = useRef<{ index: number, length: number } | null>(null);
+  const originalSelectionRef = useRef<{ index: number, delta: any } | null>(null);
   const [doc, setDoc] = useState<Document | null>(null);
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [autocompletePopup, setAutocompletePopup] = useState<{ top: number, left: number, index: number } | null>(null);
+  const [autocompletePopup, setAutocompletePopup] = useState<{ top: number, left: number, index: number, matchLength: number } | null>(null);
+  const [aiPromptPopup, setAiPromptPopup] = useState<{ top: number, left: number, index: number, length: number, mode: 'input' | 'suggest' } | null>(null);
+  const [selectionToolbar, setSelectionToolbar] = useState<{ top: number, left: number, index: number, length: number } | null>(null);
+  const [aiPromptInput, setAiPromptInput] = useState('');
+  const [mounted, setMounted] = useState(false);
   const [showHints, setShowHints] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ id: string, firstName: string, lastName: string } | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
-  const aiSuggestionRef = useRef<{ index: number, length: number } | null>(null);
   const [hasActiveSuggestion, setHasActiveSuggestion] = useState(false);
   const [showAiTools, setShowAiTools] = useState(false);
 
-  // Load user
+  // Mount flag for portals
+  useEffect(() => { setMounted(true); setCurrentUser(getUser()); }, []);
+
+  // Escape key dismisses AI popups
   useEffect(() => {
-    setCurrentUser(getUser());
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setAiPromptPopup(null);
+        setSelectionToolbar(null);
+        setAutocompletePopup(null);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   // Fetch document
@@ -142,6 +160,7 @@ export default function CollaborativeEditorPage() {
 
     function setupSockets(quill: QuillType, cursors: QuillCursorsType) {
       const socket = getSocket();
+      socketRef.current = socket;
       socket.connect();
 
       // 2. Join the document room
@@ -180,38 +199,21 @@ export default function CollaborativeEditorPage() {
           // @coPI autocomplete trigger
           const text = quill.getText();
           const cursorIndex = quill.getSelection()?.index || 0;
-          const lastLineStr = text.substring(0, cursorIndex).split('\n').pop() || '';
+          const lastLineStr = text.substring(0, cursorIndex);
 
-          if (lastLineStr.endsWith('@')) {
+          const match = /(^|\s)(@c?o?p?i?)$/i.exec(lastLineStr);
+          if (match) {
             const bounds = quill.getBounds(cursorIndex);
             if (bounds) {
-              setAutocompletePopup({ top: bounds.top + bounds.height + 60, left: bounds.left + 20, index: cursorIndex }); // Adjust for toolbar offset
+              setAutocompletePopup({ 
+                top: bounds.top + bounds.height + 60, 
+                left: bounds.left + 20, 
+                index: cursorIndex,
+                matchLength: match[2].length
+              });
             }
           } else {
             setAutocompletePopup(null);
-          }
-
-          // @coPI generation trigger
-
-          const match = lastLineStr.match(/@copi\s+(.*?)\.\.\.$/i);
-          if (match) {
-            const prompt = match[1].trim();
-            if (prompt) {
-              setIsStreaming(true);
-              const matchText = match[0];
-              const promptIndex = cursorIndex - matchText.length;
-              quill.deleteText(promptIndex, matchText.length, 'user');
-              
-              // Get precise document context
-              const contextBefore = text.substring(Math.max(0, promptIndex - 1500), promptIndex);
-              const contextAfter = text.substring(cursorIndex, cursorIndex + 1500);
-              
-              // Prepare tracking for the AI suggestion
-              aiSuggestionRef.current = { index: promptIndex, length: 0 };
-              setHasActiveSuggestion(false);
-
-              socket.emit('copi-draft', documentId, { prompt, repositoryId: projectId, contextBefore, contextAfter });
-            }
           }
         }
       };
@@ -243,7 +245,7 @@ export default function CollaborativeEditorPage() {
       socket.on('copi-stream-end', handleStreamEnd);
       socket.on('copi-stream-error', handleStreamError);
 
-      // 5. Handle cursor sync
+      // 5. Handle cursor sync and selection toolbars
       const handleSelectionChange = (range: any, oldRange: any, source: string) => {
         if (source === 'user') {
           socket.emit('cursor-move', documentId, {
@@ -251,6 +253,20 @@ export default function CollaborativeEditorPage() {
             name: currentUser!.firstName,
             range,
           });
+          
+          if (range && range.length > 0) {
+            const bounds = quill.getBounds(range.index, range.length);
+            if (bounds) {
+              setSelectionToolbar({
+                top: bounds.top + 30, // Show slightly above selection
+                left: bounds.left + 20,
+                index: range.index,
+                length: range.length
+              });
+            }
+          } else {
+            setTimeout(() => setSelectionToolbar(null), 100);
+          }
         }
       };
       quill.on('selection-change', handleSelectionChange);
@@ -319,7 +335,13 @@ export default function CollaborativeEditorPage() {
   const rejectAiSuggestion = () => {
     if (quillRef.current && aiSuggestionRef.current) {
       const { index, length } = aiSuggestionRef.current;
+      // Delete the AI-generated text
       quillRef.current.deleteText(index, length);
+      // If original highlighted text was saved, restore it
+      if (originalSelectionRef.current && originalSelectionRef.current.index === index) {
+        quillRef.current.updateContents(originalSelectionRef.current.delta, 'user');
+      }
+      originalSelectionRef.current = null;
       aiSuggestionRef.current = null;
       setHasActiveSuggestion(false);
     }
@@ -369,24 +391,83 @@ export default function CollaborativeEditorPage() {
     }
   };
 
+  const triggerAiAction = (action: string, customPrompt?: string) => {
+    if (!quillRef.current || !socketRef.current) return;
+    const q = quillRef.current;
+    const socket = socketRef.current;
+    
+    const targetIndex = aiPromptPopup ? aiPromptPopup.index : (selectionToolbar ? selectionToolbar.index : 0);
+    const targetLength = aiPromptPopup ? aiPromptPopup.length : (selectionToolbar ? selectionToolbar.length : 0);
+    
+    const text = q.getText();
+    const contextBefore = text.substring(Math.max(0, targetIndex - 1500), targetIndex);
+    const contextAfter = text.substring(targetIndex + targetLength, targetIndex + targetLength + 1500);
+    
+    let finalPrompt = customPrompt || action;
+    if (targetLength > 0) {
+      const selectedText = text.substring(targetIndex, targetIndex + targetLength);
+      finalPrompt = `${action}: "${selectedText}"`;
+      // Save original content as a Delta so we can restore on Discard
+      const originalDelta = q.getContents(targetIndex, targetLength);
+      // Build a restore delta: insert the original back at the same position
+      originalSelectionRef.current = {
+        index: targetIndex,
+        delta: { ops: [{ retain: targetIndex }, ...originalDelta.ops] }
+      };
+      q.deleteText(targetIndex, targetLength, 'user');
+    } else {
+      originalSelectionRef.current = null;
+    }
+    
+    aiSuggestionRef.current = { index: targetIndex, length: 0 };
+    setIsStreaming(true);
+    setHasActiveSuggestion(false);
+    setAiPromptPopup(null);
+    setSelectionToolbar(null);
+    setAiPromptInput('');
+    
+    socket.emit('copi-draft', documentId, { 
+      prompt: finalPrompt, 
+      repositoryId: projectId, 
+      contextBefore, 
+      contextAfter 
+    });
+  };
+
   if (loading) return <div className="dash-empty">Loading editor...</div>;
   if (error) return <div className="dash-empty" style={{ color: 'var(--error)' }}>{error}</div>;
 
+  const topbarPortal = mounted ? document.getElementById('ds-topbar-portal-target') : null;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: 'var(--surface)' }}>
-      {/* Top Navigation Bar */}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, overflow: 'hidden', backgroundColor: 'var(--surface)' }}>
+
+      {/* Inject Back + title into the shell topbar */}
+      {topbarPortal && !isFullScreen && createPortal(
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden', justifyContent: 'flex-start', width: '100%' }}>
+          <Link
+            href={`/repositories/${projectId}`}
+            className="dash-btn-ghost"
+            style={{ padding: '0.3rem 0.75rem', fontSize: '0.82rem', flexShrink: 0, border: '1px solid rgba(0,0,0,0.15)', borderRadius: '6px' }}
+          >
+            ← Back
+          </Link>
+          <h1 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {doc?.title}
+          </h1>
+        </div>,
+        topbarPortal
+      )}
+
+      {/* Editor action bar — action buttons only (no back/title) */}
       {!isFullScreen && (
-        <header className="editor-header">
+        <header className="editor-header" style={{ flexShrink: 0 }}>
           <div className="editor-header-left">
-            <Link href={`/repositories/${projectId}`} className="dash-btn-ghost editor-back-btn">
-              ← Back
-            </Link>
-            <h1 className="proj-title editor-title">{doc?.title}</h1>
-          </div>
-          <div className="editor-header-right">
             <div className="editor-save-status">
               {isStreaming ? <span style={{ color: '#2A7C75', fontWeight: 600, animation: 'pulse 2s infinite' }}>@coPI is typing...</span> : (saving ? 'Saving...' : 'Saved')}
             </div>
+          </div>
+          <div className="editor-header-right">
             <button onClick={() => setShowAiTools(true)} className="dash-btn-ghost" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', color: '#2A7C75' }}>
               ✨ AI Tools
             </button>
@@ -410,14 +491,15 @@ export default function CollaborativeEditorPage() {
       )}
 
       {/* Main Content Area (Editor + Side Panel) */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
         {/* Editor Container */}
         <main style={{ 
         flex: 1, 
+        minHeight: 0,
         padding: isFullScreen ? '0' : '2rem', 
         display: 'flex', 
-        justifyContent: 'center', 
-        overflowY: 'hidden', /* we want the editor to handle scroll, not the main */
+        justifyContent: 'center',
+        overflowY: 'auto',
         position: 'relative'
       }}>
         {isFullScreen && (
@@ -456,11 +538,14 @@ export default function CollaborativeEditorPage() {
           display: 'flex', 
           flexDirection: 'column',
           height: isFullScreen ? '100vh' : 'auto',
+          alignSelf: 'flex-start',
           position: isFullScreen ? 'fixed' : 'relative',
           inset: isFullScreen ? 0 : 'auto',
           zIndex: isFullScreen ? 9998 : 1
         }}>
-          {autocompletePopup && (
+          <div style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
+          
+          {autocompletePopup && !aiPromptPopup && (
             <div style={{
               position: 'absolute',
               top: `${autocompletePopup.top}px`,
@@ -472,8 +557,14 @@ export default function CollaborativeEditorPage() {
                 onClick={(e) => {
                   e.preventDefault();
                   if (quillRef.current) {
-                    quillRef.current.deleteText(autocompletePopup.index - 1, 1, 'user');
-                    quillRef.current.insertText(autocompletePopup.index - 1, '@coPI ', { color: '#2A7C75', bold: true }, 'user');
+                    quillRef.current.deleteText(autocompletePopup.index - autocompletePopup.matchLength, autocompletePopup.matchLength, 'user');
+                    setAiPromptPopup({ 
+                      top: autocompletePopup.top, 
+                      left: autocompletePopup.left, 
+                      index: autocompletePopup.index - autocompletePopup.matchLength, 
+                      length: 0,
+                      mode: 'input'
+                    });
                     setAutocompletePopup(null);
                   }
                 }}
@@ -489,35 +580,121 @@ export default function CollaborativeEditorPage() {
               </button>
             </div>
           )}
-          <div ref={editorRef} style={{ flex: 1, minHeight: isFullScreen ? '100vh' : '600px', border: 'none', display: 'flex', flexDirection: 'column' }} />
+
+          {/* AI Prompt Popup — two modes: input (from @coPI) or suggest (from selection) */}
+          {aiPromptPopup && (
+            <div style={{
+              position: 'absolute',
+              top: `${aiPromptPopup.top}px`,
+              left: `${aiPromptPopup.left}px`,
+              background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '10px',
+              boxShadow: '0 8px 30px rgba(0,0,0,0.12)', zIndex: 10000,
+              width: aiPromptPopup.mode === 'input' ? '360px' : '220px',
+              display: 'flex', flexDirection: 'column', overflow: 'hidden'
+            }}>
+              {aiPromptPopup.mode === 'input' ? (
+                /* @coPI mode — custom prompt input only */
+                <div style={{ padding: '0.6rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.6rem', background: '#f9f9f8', borderRadius: '10px' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2A7C75" strokeWidth="2"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2z"/></svg>
+                  <input
+                    autoFocus
+                    placeholder="Ask coPI anything..."
+                    value={aiPromptInput}
+                    onChange={(e) => setAiPromptInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && aiPromptInput.trim()) { e.preventDefault(); triggerAiAction('', aiPromptInput.trim()); }
+                      if (e.key === 'Escape') setAiPromptPopup(null);
+                    }}
+                    style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, fontSize: '0.9rem', color: '#111' }}
+                  />
+                  <button
+                    onClick={() => { if (aiPromptInput.trim()) triggerAiAction('', aiPromptInput.trim()); }}
+                    style={{ background: '#2A7C75', border: 'none', color: '#fff', width: '26px', height: '26px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                  </button>
+                </div>
+              ) : (
+                /* Selection mode — suggestions only */
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {[
+                    { label: 'Polish', action: 'Polish this text, improving clarity and flow' },
+                    { label: 'Fix Spelling', action: 'Fix all spelling and grammar errors in this text' },
+                    { label: 'Expand', action: 'Expand this text with more detail and depth' },
+                    { label: 'Shorten', action: 'Shorten this text while preserving key points' },
+                    { label: 'Rewrite', action: 'Rewrite this text to improve quality' },
+                  ].map(({ label, action }) => (
+                    <button
+                      key={label}
+                      onClick={() => triggerAiAction(action)}
+                      style={{
+                        padding: '0.65rem 1rem', border: 'none', background: 'transparent',
+                        cursor: 'pointer', textAlign: 'left', fontSize: '0.88rem', color: '#222',
+                        borderBottom: '1px solid rgba(0,0,0,0.05)', fontWeight: 500
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#f5f5f4'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {selectionToolbar && !aiPromptPopup && (
+            <div style={{
+              position: 'absolute',
+              top: `${selectionToolbar.top}px`,
+              left: `${selectionToolbar.left}px`,
+              zIndex: 9999,
+            }}>
+              <button
+                onClick={() => setAiPromptPopup({ ...selectionToolbar, mode: 'suggest' })}
+                style={{ 
+                  background: '#fff', color: '#2A7C75', border: '1px solid rgba(42,124,117,0.2)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '0.35rem 0.75rem', borderRadius: '20px',
+                  display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.82rem',
+                  cursor: 'pointer', fontWeight: 600
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2z"/></svg>
+                Ask coPI
+              </button>
+            </div>
+          )}
+          <div ref={editorRef} style={{ border: 'none', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }} />
         </div>
 
         {/* AI Suggestion Actions */}
         {hasActiveSuggestion && (
           <div style={{ 
-            position: 'absolute', 
+            position: 'fixed', 
             bottom: '2rem', 
             left: '50%', 
             transform: 'translateX(-50%)', 
             background: 'var(--paper)', 
-            padding: '1rem 1.5rem', 
+            padding: '0.75rem 1.25rem', 
             borderRadius: '12px', 
             boxShadow: '0 8px 32px rgba(42,124,117,0.2)', 
             border: '1px solid rgba(42,124,117,0.3)',
-            zIndex: 1000, 
+            zIndex: 10000, 
             display: 'flex', 
-            gap: '1.5rem', 
-            alignItems: 'center' 
+            gap: '1.25rem', 
+            alignItems: 'center'
           }}>
-            <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#2A7C75', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              ✨ AI Suggestion Ready
+            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#2A7C75', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2z"/></svg>
+              AI Suggestion Ready
             </span>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button onClick={rejectAiSuggestion} className="dash-btn-ghost" style={{ padding: '0.4rem 1rem', color: 'var(--error)' }}>Discard</button>
-              <button onClick={acceptAiSuggestion} className="dash-btn-primary" style={{ padding: '0.4rem 1rem', background: '#2A7C75' }}>Insert</button>
+              <button onClick={rejectAiSuggestion} className="dash-btn-ghost" style={{ padding: '0.35rem 0.9rem', fontSize: '0.85rem', color: 'var(--error)' }}>Discard</button>
+              <button onClick={acceptAiSuggestion} className="dash-btn-primary" style={{ padding: '0.35rem 0.9rem', fontSize: '0.85rem', background: '#2A7C75' }}>Insert</button>
             </div>
           </div>
         )}
+        </div>
         </main>
 
         {/* AI Tools Side Panel (Overlay) */}
@@ -744,15 +921,20 @@ export default function CollaborativeEditorPage() {
           border-bottom: 1px solid rgba(0,0,0,0.1) !important;
           background: #fafafa;
           padding: 1rem !important;
+          flex-shrink: 0;
         }
         .ql-container.ql-snow {
           border: none !important;
           font-family: inherit !important;
           font-size: 1rem !important;
+          flex: 1;
+          min-height: 0;
+          overflow-y: auto;
         }
         .ql-editor {
           padding: 2rem !important;
           line-height: 1.6;
+          min-height: calc(100vh - 250px);
         }
         .editor-header {
           display: flex; align-items: center; justify-content: space-between;

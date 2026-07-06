@@ -1,10 +1,11 @@
 import Link from 'next/link';
 
 const NAV_LINKS = [
-  { label: 'Features',  href: '#features'  },
-  { label: 'Projects',  href: '#projects'  },
-  { label: 'Team',      href: '#team'      },
-  { label: 'About',     href: '#about'     },
+  { label: 'Explore',   href: '/explore'   },
+  { label: 'Features',  href: '/#features' },
+  { label: 'Projects',  href: '/#projects' },
+  { label: 'Team',      href: '/#team'     },
+  { label: 'About',     href: '/#about'    },
 ];
 
 export default function Navbar() {

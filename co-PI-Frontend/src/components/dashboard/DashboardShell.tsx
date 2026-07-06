@@ -105,7 +105,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       )}
 
       {/* ── Main content ── */}
-      <div className="ds-main">
+      <div className="ds-main" style={pathname.endsWith('/chat') ? { height: '100dvh', overflow: 'hidden' } : undefined}>
         {/* Topbar */}
         <header className="ds-topbar">
           <button
@@ -116,7 +116,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             ☰
           </button>
           
-          <div id="ds-topbar-portal-target" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}></div>
+          <div id="ds-topbar-portal-target" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', overflow: 'hidden' }}></div>
 
           <div className="ds-topbar-right" style={{ marginLeft: 'auto', position: 'relative' }}>
             {user && (
@@ -157,7 +157,11 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="ds-content" style={pathname.endsWith('/chat') ? { padding: 0, display: 'flex', flexDirection: 'column' } : undefined}>
+        <main className="ds-content" style={
+          (pathname.endsWith('/chat') || pathname.endsWith('/editor'))
+            ? { padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, minHeight: 0 }
+            : undefined
+        }>
           {children}
         </main>
       </div>

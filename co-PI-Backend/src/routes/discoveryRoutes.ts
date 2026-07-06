@@ -11,4 +11,7 @@ router.get('/search/count', DiscoveryController.searchPublicCount);
 router.get('/public', authenticateJWT, DiscoveryController.getPublicRepositories);
 router.post('/apply/:id', authenticateJWT, DiscoveryController.applyToRepository);
 
+// Unauthenticated endpoint for explore page
+router.get('/explore', DiscoveryController.explorePublicRepositories);
+
 export default router;

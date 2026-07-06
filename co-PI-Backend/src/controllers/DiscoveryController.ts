@@ -15,7 +15,25 @@ export class DiscoveryController {
   static async getPublicRepositories(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).user.id;
-      const repositories = await DiscoveryService.getPublicRepositories(userId);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 40;
+      const search = (req.query.search as string) || '';
+      
+      const repositories = await DiscoveryService.getPublicRepositories(userId, page, limit, search);
+      res.status(200).json(repositories);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async explorePublicRepositories(req: Request, res: Response, next: NextFunction) {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 4;
+      const search = (req.query.search as string) || '';
+      
+      // Unauthenticated, so userId is null
+      const repositories = await DiscoveryService.getPublicRepositories(null, page, limit, search);
       res.status(200).json(repositories);
     } catch (error) {
       next(error);

@@ -286,9 +286,9 @@ export default function RepositoryChatPage({ params }: { params: Promise<{ id: s
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#fff' }}>
-      {/* Header Portal (Mobile only) */}
+      {/* Header Portal */}
       {headerPortal && createPortal(
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.5rem 0' }}>
           <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#111' }}>Team Chat</h2>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             {onlineList.length} online
@@ -302,6 +302,7 @@ export default function RepositoryChatPage({ params }: { params: Promise<{ id: s
 
       {/* Messages Area */}
       <div 
+        className="chat-scroll-container"
         ref={chatContainerRef}
         onScroll={handleScroll}
         style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
@@ -522,6 +523,13 @@ export default function RepositoryChatPage({ params }: { params: Promise<{ id: s
             padding: 1.5rem;
             padding-bottom: 2.5rem;
             box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
+          }
+          .chat-scroll-container::-webkit-scrollbar {
+            display: none;
+          }
+          .chat-scroll-container {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
           }
         }
         

@@ -66,6 +66,7 @@ export const APPLICATIONS = {
 export const DISCOVERY = {
   SEARCH_COUNT: (query: string) => `${BASE}/api/discover/search/count?q=${encodeURIComponent(query)}`,
   PUBLIC: `${BASE}/api/discover/public`,
+  EXPLORE: `${BASE}/api/discover/explore`,
   APPLY: (id: string) => `${BASE}/api/discover/apply/${id}`,
 } as const;
 
