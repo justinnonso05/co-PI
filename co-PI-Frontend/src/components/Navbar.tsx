@@ -41,7 +41,7 @@ export default function Navbar() {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(242, 237, 228, 0.98)', backdropFilter: 'blur(10px)',
-          zIndex: 9999, display: 'flex', flexDirection: 'column', padding: '1.5rem'
+          zIndex: 9990, display: 'flex', flexDirection: 'column', padding: '1.5rem'
         }}>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button 

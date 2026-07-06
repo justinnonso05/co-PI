@@ -80,7 +80,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           {/* Context-aware Repository Links */}
           {pathname.startsWith('/repositories/') && (
             <>
-              <div style={{ margin: '1.5rem 0 0.5rem 1rem', fontSize: '0.75rem', fontWeight: 600, color: 'rgba(26,26,24,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ margin: '1.5rem 0 0.5rem 1rem', fontSize: '0.75rem', fontWeight: 600, color: 'rgba(242,237,228,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Current Repository
               </div>
               <Link
