@@ -4,7 +4,10 @@
 // Import from this file on every page — never hardcode URLs.
 // ─────────────────────────────────────────────────────────────────
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+let BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+if (BASE && !BASE.startsWith('http://') && !BASE.startsWith('https://')) {
+  BASE = `https://${BASE}`;
+}
 
 // ── Authentication ────────────────────────────────────────────────
 export const AUTH = {

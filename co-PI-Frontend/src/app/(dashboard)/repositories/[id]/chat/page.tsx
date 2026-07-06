@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, use } from 'react';
 import { useRouter } from 'next/navigation';
+import { createPortal } from 'react-dom';
 import { getSocket } from '@/lib/socket';
 import { apiFetch, getUser } from '@/lib/api';
 import { PROJECTS } from '@/lib/endpoints';
@@ -32,8 +33,9 @@ export default function RepositoryChatPage({ params }: { params: Promise<{ id: s
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [typingUsers, setTypingUsers] = useState<Map<string, string>>(new Map()); // map of userId -> name
-  const [onlineUsers, setOnlineUsers] = useState<Map<string, number>>(new Map()); // map of userId -> lastSeenTimestamp
+  const [onlineUsers, setOnlineUsers] = useState<Map<string, { lastSeen: number, firstName: string }>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<any>(null);
@@ -109,11 +111,11 @@ export default function RepositoryChatPage({ params }: { params: Promise<{ id: s
       });
     });
 
-    socket.on('user-status-changed', (payload: { userId: string, status: string }) => {
+    socket.on('user-status-changed', (payload: { userId: string, firstName?: string, status: string }) => {
       if (payload.status === 'online') {
         setOnlineUsers(prev => {
           const next = new Map(prev);
-          next.set(payload.userId, Date.now());
+          next.set(payload.userId, { lastSeen: Date.now(), firstName: payload.firstName || 'Unknown' });
           return next;
         });
       }
@@ -125,8 +127,8 @@ export default function RepositoryChatPage({ params }: { params: Promise<{ id: s
       setOnlineUsers(prev => {
         let changed = false;
         const next = new Map(prev);
-        for (const [uid, lastSeen] of next.entries()) {
-          if (now - lastSeen > 15000) {
+        for (const [uid, data] of next.entries()) {
+          if (now - data.lastSeen > 15000) {
             next.delete(uid);
             changed = true;
           }
@@ -169,9 +171,14 @@ export default function RepositoryChatPage({ params }: { params: Promise<{ id: s
     isUserScrolling.current = !isNearBottom;
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     
+    // Sync scroll
+    if (overlayRef.current) {
+      overlayRef.current.scrollTop = e.target.scrollTop;
+    }
+
     if (currentUser) {
       const socket = getSocket();
       socket.emit('typing-start', repositoryId, { userId: currentUser.id, name: currentUser.firstName });
@@ -186,8 +193,19 @@ export default function RepositoryChatPage({ params }: { params: Promise<{ id: s
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      
+      // If autocomplete is open, select the suggestion instead of sending
+      if (showAutocomplete) {
+        insertSuggestion();
+        return;
+      }
+      
       handleSend();
     }
+  };
+
+  const insertSuggestion = () => {
+    setInput(prev => prev.replace(/(^|\s)@$/, '$1@coPI '));
   };
 
   const handleSend = (e?: React.FormEvent) => {
@@ -224,20 +242,69 @@ export default function RepositoryChatPage({ params }: { params: Promise<{ id: s
     }
   };
 
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const showAutocomplete = /(?:^|\s)@$/.test(input);
+
+  const renderHighlightedText = (text: string) => {
+    if (!text) return <span style={{ color: '#aaa' }}>Type your message or tag @coPI...</span>;
+    const parts = text.split(/(@copi)/i);
+    return parts.map((part, i) => 
+      part.toLowerCase() === '@copi' 
+        ? <span key={i} style={{ color: '#2A7C75', background: 'rgba(42,124,117,0.15)', padding: '0 2px', borderRadius: '4px', fontWeight: 600 }}>{part}</span> 
+        : <span key={i}>{part}</span>
+    );
+  };
+
+  const renderMessageContent = (msg: ChatMessage, isMe: boolean) => {
+    const parts = msg.content.split(/(@copi)/i);
+    return parts.map((part, i) => 
+      part.toLowerCase() === '@copi' 
+        ? (
+          <span 
+            key={i} 
+            onClick={() => setActiveModal(msg.id)}
+            style={{ 
+              color: isMe ? '#2A7C75' : '#2A7C75', 
+              background: isMe ? '#fff' : 'rgba(42,124,117,0.15)', 
+              padding: '0 4px', borderRadius: '4px', fontWeight: 600,
+              cursor: 'pointer', display: 'inline-block',
+              boxShadow: isMe ? '0 2px 4px rgba(0,0,0,0.1)' : '0 1px 2px rgba(42,124,117,0.2)'
+            }}
+          >
+            {part}
+          </span>
+        ) 
+        : <span key={i}>{part}</span>
+    );
+  };
+
   if (!mounted || !currentUser) return null;
 
+  // Render Portal Header
+  const headerPortal = document.getElementById('ds-topbar-portal-target');
+  const onlineList = Array.from(onlineUsers.values());
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#f9f9f8' }}>
-      {/* Header */}
-      <div style={{ padding: '1rem 1.5rem', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#111' }}>Team Chat</h2>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#fff' }}>
+      {/* Header Portal (Mobile only) */}
+      {headerPortal && createPortal(
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#111' }}>Team Chat</h2>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {onlineList.length} online
+            {onlineList.length > 0 && ': '}
+            {onlineList.slice(0, 3).map(u => u.firstName).join(', ')}
+            {onlineList.length > 3 && '...'}
+          </div>
+        </div>,
+        headerPortal
+      )}
 
       {/* Messages Area */}
       <div 
         ref={chatContainerRef}
         onScroll={handleScroll}
-        style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
+        style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
       >
         {loading && <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Loading messages...</div>}
         
@@ -278,20 +345,19 @@ export default function RepositoryChatPage({ params }: { params: Promise<{ id: s
                   </span>
                 )}
                 <div style={{
-                  background: isMe ? '#2A7C75' : (msg.isAiResponse ? '#f3e8ff' : '#fff'),
+                  background: isMe ? '#2A7C75' : (msg.isAiResponse ? '#f3e8ff' : '#f3f4f6'),
                   color: isMe ? '#fff' : (msg.isAiResponse ? '#4c1d95' : '#111'),
                   padding: '0.75rem 1rem',
-                  borderRadius: '12px',
-                  borderBottomRightRadius: isMe ? 0 : '12px',
-                  borderBottomLeftRadius: isMe ? '12px' : 0,
+                  borderRadius: '16px',
+                  borderBottomRightRadius: isMe ? '4px' : '16px',
+                  borderBottomLeftRadius: isMe ? '16px' : '4px',
                   boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                  border: isMe ? 'none' : '1px solid rgba(0,0,0,0.05)',
                   lineHeight: '1.5',
                   wordBreak: 'break-word',
                   whiteSpace: 'pre-wrap',
                   position: 'relative'
                 }}>
-                  {msg.content}
+                  {renderMessageContent(msg, isMe)}
                   {msg.isStreaming && <span className="blinking-cursor">|</span>}
                 </div>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem', marginRight: isMe ? '0.5rem' : 0, marginLeft: !isMe ? '0.5rem' : 0 }}>
@@ -321,27 +387,79 @@ export default function RepositoryChatPage({ params }: { params: Promise<{ id: s
       </div>
 
       {/* Input Area */}
-      <div style={{ padding: '1rem 1.5rem', background: '#fff', borderTop: '1px solid rgba(0,0,0,0.1)' }}>
+      <div style={{ padding: '0.75rem 1rem', background: '#fff', borderTop: '1px solid rgba(0,0,0,0.1)', position: 'relative' }}>
+        
+        {/* Autocomplete Popover */}
+        {showAutocomplete && (
+          <div style={{
+            position: 'absolute', bottom: '100%', left: '1rem', marginBottom: '0.5rem',
+            background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 50, overflow: 'hidden'
+          }}>
+            <button
+              onClick={(e) => { e.preventDefault(); insertSuggestion(); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem',
+                border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '0.95rem',
+                color: '#111', width: '100%', textAlign: 'left', fontWeight: 500
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            >
+              <span style={{ color: '#2A7C75' }}>✨</span> @coPI
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSend} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
-          <textarea
-            value={input}
-            onChange={(e) => handleInputChange(e as any)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your message or tag @coPI..."
-            rows={input.split('\n').length > 1 ? Math.min(input.split('\n').length, 5) : 1}
-            style={{
-              flex: 1,
-              padding: '0.75rem 1rem',
-              borderRadius: '24px',
-              border: '1px solid rgba(0,0,0,0.2)',
-              outline: 'none',
-              fontSize: '0.95rem',
-              resize: 'none',
-              minHeight: '44px',
-              fontFamily: 'inherit',
-              lineHeight: '1.5'
-            }}
-          />
+          <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'stretch' }}>
+            {/* The underlying Highlighted Text */}
+            <div
+              ref={overlayRef}
+              style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                padding: '0.75rem 1rem',
+                fontSize: '0.95rem',
+                lineHeight: '1.5',
+                fontFamily: 'inherit',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                color: '#111',
+                pointerEvents: 'none',
+                overflowY: 'auto',
+                overflowX: 'hidden'
+              }}
+            >
+              {renderHighlightedText(input)}
+            </div>
+            
+            {/* The transparent interactive textarea */}
+            <textarea
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              onScroll={(e) => { if (overlayRef.current) overlayRef.current.scrollTop = e.currentTarget.scrollTop; }}
+              placeholder=""
+              rows={input.split('\n').length > 1 ? Math.min(input.split('\n').length, 5) : 1}
+              style={{
+                flex: 1,
+                padding: '0.75rem 1rem',
+                borderRadius: '24px',
+                border: '1px solid rgba(0,0,0,0.2)',
+                outline: 'none',
+                fontSize: '0.95rem',
+                resize: 'none',
+                minHeight: '44px',
+                fontFamily: 'inherit',
+                lineHeight: '1.5',
+                color: 'transparent',
+                caretColor: '#111',
+                background: 'transparent',
+                zIndex: 2,
+              }}
+            />
+          </div>
           <button
             type="submit"
             style={{
@@ -379,7 +497,76 @@ export default function RepositoryChatPage({ params }: { params: Promise<{ id: s
         @keyframes blink {
           50% { opacity: 0; }
         }
+        @keyframes slideUp {
+          from { transform: translateY(100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        
+        /* Responsive Modal CSS */
+        .copi-action-modal {
+          position: fixed;
+          z-index: 1000;
+          background: #fff;
+          display: flex;
+          flex-direction: column;
+          animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        
+        @media (max-width: 767px) {
+          .copi-action-modal {
+            bottom: 0;
+            left: 0;
+            right: 0;
+            border-top-left-radius: 24px;
+            border-top-right-radius: 24px;
+            padding: 1.5rem;
+            padding-bottom: 2.5rem;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
+          }
+        }
+        
+        @media (min-width: 768px) {
+          .copi-action-modal {
+            bottom: 2rem;
+            right: 2rem;
+            width: 360px;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+          }
+        }
       `}</style>
+
+      {/* @coPI Action Modal */}
+      {activeModal && createPortal(
+        <>
+          <div 
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', zIndex: 999, animation: 'fadeIn 0.2s' }}
+            onClick={() => setActiveModal(null)}
+          />
+          <div className="copi-action-modal">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#111', fontSize: '1.1rem' }}>
+                <span style={{ color: '#2A7C75', fontSize: '1.2rem' }}>✨</span> @coPI Action
+              </h3>
+              <button 
+                onClick={() => setActiveModal(null)}
+                style={{ background: '#f3f4f6', border: 'none', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#666' }}
+              >
+                ✕
+              </button>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.5, marginBottom: '1.5rem' }}>
+              You interacted with a @coPI mention. What would you like to do?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <button className="dash-btn-primary" style={{ background: '#2A7C75', justifyContent: 'center', padding: '0.8rem' }}>Extract Action Items</button>
+              <button className="dash-btn-ghost" style={{ justifyContent: 'center', border: '1px solid rgba(0,0,0,0.1)', padding: '0.8rem' }}>Summarize Context</button>
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
     </div>
   );
 }

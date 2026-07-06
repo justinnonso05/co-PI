@@ -39,7 +39,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         socket.connect();
         
         // Ping immediately and then every 10s
-        const ping = () => socket.emit('set-online-status', { userId: u.id, status: 'online' });
+        const ping = () => socket.emit('set-online-status', { userId: u.id, firstName: u.firstName, status: 'online' });
         ping();
         const interval = setInterval(ping, 10000);
         return () => clearInterval(interval);
@@ -115,6 +115,9 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           >
             ☰
           </button>
+          
+          <div id="ds-topbar-portal-target" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}></div>
+
           <div className="ds-topbar-right" style={{ marginLeft: 'auto', position: 'relative' }}>
             {user && (
               <div 
@@ -154,7 +157,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="ds-content">
+        <main className="ds-content" style={pathname.endsWith('/chat') ? { padding: 0, display: 'flex', flexDirection: 'column' } : undefined}>
           {children}
         </main>
       </div>

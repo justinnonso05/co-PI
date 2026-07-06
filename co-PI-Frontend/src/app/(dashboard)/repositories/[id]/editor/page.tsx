@@ -34,6 +34,7 @@ export default function CollaborativeEditorPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [autocompletePopup, setAutocompletePopup] = useState<{ top: number, left: number, index: number } | null>(null);
   const [showHints, setShowHints] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -176,10 +177,21 @@ export default function CollaborativeEditorPage() {
             }
           }, 2000);
 
-          // @coPI trigger
+          // @coPI autocomplete trigger
           const text = quill.getText();
           const cursorIndex = quill.getSelection()?.index || 0;
           const lastLineStr = text.substring(0, cursorIndex).split('\n').pop() || '';
+
+          if (lastLineStr.endsWith('@')) {
+            const bounds = quill.getBounds(cursorIndex);
+            if (bounds) {
+              setAutocompletePopup({ top: bounds.top + bounds.height + 60, left: bounds.left + 20, index: cursorIndex }); // Adjust for toolbar offset
+            }
+          } else {
+            setAutocompletePopup(null);
+          }
+
+          // @coPI generation trigger
 
           const match = lastLineStr.match(/@copi\s+(.*?)\.\.\.$/i);
           if (match) {
@@ -448,6 +460,35 @@ export default function CollaborativeEditorPage() {
           inset: isFullScreen ? 0 : 'auto',
           zIndex: isFullScreen ? 9998 : 1
         }}>
+          {autocompletePopup && (
+            <div style={{
+              position: 'absolute',
+              top: `${autocompletePopup.top}px`,
+              left: `${autocompletePopup.left}px`,
+              background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 9999, overflow: 'hidden'
+            }}>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (quillRef.current) {
+                    quillRef.current.deleteText(autocompletePopup.index - 1, 1, 'user');
+                    quillRef.current.insertText(autocompletePopup.index - 1, '@coPI ', { color: '#2A7C75', bold: true }, 'user');
+                    setAutocompletePopup(null);
+                  }
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem',
+                  border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '0.95rem',
+                  color: '#111', width: '100%', textAlign: 'left', fontWeight: 500
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <span style={{ color: '#2A7C75' }}>✨</span> @coPI
+              </button>
+            </div>
+          )}
           <div ref={editorRef} style={{ flex: 1, minHeight: isFullScreen ? '100vh' : '600px', border: 'none', display: 'flex', flexDirection: 'column' }} />
         </div>
 
